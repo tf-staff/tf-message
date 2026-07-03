@@ -1,0 +1,1188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TF-Message — Tech Foundry Power-Up</title>
+<script src="https://p.trellocdn.com/power-up.min.js"></script>
+<style>
+  :root{
+    --bg:#242528; --panel:#2b2c2f;
+    --subtle:rgba(255,255,255,.06); --subtle-h:rgba(255,255,255,.12);
+    --line:#46474b; --text:#cecfd2; --dim:#96999e; --dimmer:#85878c;
+    --head:#e2e3e5; --blue:#579dff; --green:#4bce97; --red:#f87168; --amber:#e2b203;
+    --flash:rgba(75,206,151,.18);
+  }
+  [data-color-mode="light"]{
+    --bg:#f1f2f4; --panel:#ffffff;
+    --subtle:rgba(0,0,0,.05); --subtle-h:rgba(0,0,0,.1);
+    --line:#d5d7db; --text:#33373c; --dim:#6b6f76; --dimmer:#84878d;
+    --head:#1d2125; --blue:#0c66e4; --green:#1f845a; --red:#c9372c; --amber:#946f00;
+    --flash:rgba(31,132,90,.15);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px; -webkit-font-smoothing:antialiased; line-height:1.4; padding:24px 16px;}
+  body.tp-summary,body.tp-connector{padding:0;background:transparent}
+  .num{font-variant-numeric:tabular-nums}
+  button{font:inherit}
+
+  .panel{max-width:720px; margin:0 auto; background:var(--panel); position:relative;
+    border:none; border-radius:10px; padding:14px 18px 14px;}
+
+  .head{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+  .title{display:inline-flex; align-items:center; gap:7px; font-weight:700; font-size:14px; color:var(--head)}
+  .ver{font-size:11px;color:var(--dimmer)}
+  .seg{display:inline-flex; background:var(--subtle); border-radius:6px; padding:2px; gap:2px}
+  .seg button{appearance:none; border:0; background:transparent; color:var(--dim); cursor:pointer;
+    font-size:12px; font-weight:600; padding:4px 12px; border-radius:5px}
+  .seg button[aria-pressed="true"]{background:var(--blue); color:#fff}
+  [data-color-mode="dark"] .seg button[aria-pressed="true"]{color:#1d2125}
+  .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:1px}
+  .autochip{font-size:10.5px;color:var(--dimmer);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+
+  /* client strip (click any item to copy it) */
+  .client{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:2px 0 10px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+  .client .who{appearance:none;border:0;font:inherit;font-weight:700;color:var(--head);font-size:13.5px;
+    background:transparent;cursor:pointer;padding:2px 6px;border-radius:6px}
+  .client .who:hover{background:var(--subtle-h)}
+  .chip{appearance:none;border:0;font:inherit;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--dim);
+    background:var(--subtle);border-radius:999px;padding:2px 10px;max-width:280px;overflow:hidden;white-space:nowrap;cursor:pointer}
+  .chip:hover{background:var(--subtle-h);color:var(--text)}
+  .chip .val{overflow:hidden;text-overflow:ellipsis}
+  .chip .k{color:var(--dimmer)}
+  .chip.ok,.client .who.ok{color:var(--green);box-shadow:inset 0 0 0 1px rgba(75,206,151,.5)}
+  .client .none{font-size:12px;color:var(--dimmer);font-style:italic}
+
+  .btn{appearance:none;border:1px solid var(--line);background:var(--subtle);color:var(--text);
+    cursor:pointer;font-size:12px;font-weight:700;padding:5px 13px;border-radius:6px;white-space:nowrap}
+  .btn:hover{background:var(--subtle-h)}
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  [data-color-mode="dark"] .btn.primary{color:#1d2125}
+  .btn.ok{color:var(--green);border-color:rgba(75,206,151,.45);background:transparent}
+  .btn:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+  .btn:disabled{opacity:.45;cursor:default}
+
+  /* templates: category seg + chip row */
+  .catbar{display:flex;align-items:center;gap:8px;padding:12px 6px 8px;margin-top:8px;border-top:1px solid var(--line)}
+  .catbar .seg{flex-wrap:wrap}
+  .tgroup{display:flex;flex-wrap:wrap;gap:6px;padding:0 6px 4px;min-height:28px}
+  .tpl{appearance:none;border:1px solid var(--line);background:transparent;color:var(--dim);
+    cursor:pointer;font-size:12px;font-weight:600;padding:4px 11px;border-radius:999px}
+  .tpl:hover{background:var(--subtle-h);color:var(--text)}
+  .tpl[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+  [data-color-mode="dark"] .tpl[aria-pressed="true"]{color:#1d2125}
+  .tpl .site{font-size:10px;opacity:.75;margin-left:4px}
+
+  /* fields */
+  .fields{display:flex;flex-wrap:wrap;gap:8px 14px;padding:10px 6px 4px;align-items:flex-end}
+  .fields[hidden]{display:none}
+  .fld{display:flex;flex-direction:column;gap:3px}
+  .fld label{font-size:11px;font-weight:700;color:var(--dim)}
+  .fld input,.fld select,.fld textarea{font:inherit;font-size:12.5px;color:var(--text);background:var(--bg);
+    border:1px solid var(--line);border-radius:6px;padding:5px 8px;min-width:120px}
+  .fld textarea{min-width:260px;min-height:44px;resize:vertical}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--blue)}
+  .fld .note{font-size:10.5px;color:var(--dimmer)}
+  .fld.fchk .chkrow{display:flex;align-items:center;min-height:29px}
+  .fld.fchk input[type=checkbox]{width:17px;height:17px;accent-color:var(--blue);cursor:pointer;min-width:0}
+  .fld .note.code{color:var(--green);font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* locker picker (numbered buttons) */
+  .lockers{display:flex;gap:6px;flex-wrap:wrap}
+  .lk{appearance:none;cursor:pointer;width:52px;border-radius:8px;border:1px solid var(--line);
+    background:var(--subtle);color:var(--text);padding:6px 0 5px;display:flex;flex-direction:column;align-items:center;gap:1px}
+  .lk .n{font-size:15px;font-weight:800;color:var(--head)}
+  .lk .c{font-size:10px;color:var(--dimmer);font-variant-numeric:tabular-nums}
+  .lk:hover{background:var(--subtle-h)}
+  .lk[aria-pressed="true"]{border-color:var(--blue);outline:2px solid var(--blue);outline-offset:1px}
+  .lk[aria-pressed="true"] .n{color:var(--blue)}
+  .lk.rsv{opacity:.45;cursor:default}
+  .lk.rsv .c{font-size:9px}
+
+  /* preview */
+  .pvwrap{margin-top:12px;border-top:1px solid var(--line);padding:12px 6px 0}
+  .pvhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .pvhead .lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  .pvhead .hint{margin-left:auto;font-size:11px;color:var(--dimmer);font-style:italic}
+  .pv{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;
+    font-size:13px;line-height:1.55;min-height:120px;color:var(--text)}
+  .pv:focus{outline:none;border-color:var(--blue)}
+  .pv p{margin:0 0 10px}
+  .pv ol,.pv ul{margin:0 0 10px;padding-left:22px}
+  .pv li{margin:2px 0}
+  .pv a{color:var(--blue)}
+  .pv pre{margin:0 0 10px;padding:10px 12px;background:var(--subtle);border-radius:6px;overflow-x:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.45;white-space:pre}
+  .fld.qwide{flex:1 1 100%}
+  .fld .qrow{display:flex;gap:8px;align-items:flex-start}
+  .fld .qrow textarea{flex:1 1 auto;min-height:110px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px}
+  .pv .miss{color:var(--amber);font-style:italic}
+  .pv .empty{color:var(--dimmer);font-style:italic}
+
+  /* settings */
+  .setwrap{margin-top:14px;border-top:1px solid var(--line);padding:12px 6px 4px}
+  .sethead{display:flex;align-items:baseline;gap:10px}
+  .sethead .lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--head);font-weight:800}
+  .sethead .sub{font-size:11.5px;color:var(--dimmer)}
+  .modchip{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:1px 8px}
+  .modchip[hidden]{display:none}
+  #setText{width:100%;min-height:190px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;line-height:1.5;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  #setText:focus{outline:none;border-color:var(--blue)}
+  .toklegend{display:flex;flex-wrap:wrap;gap:5px;padding:8px 0 2px}
+  .tok{font-size:10.5px;color:var(--dim);background:var(--subtle);border-radius:5px;padding:2px 7px;cursor:pointer}
+  .tok b{color:var(--blue);font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600}
+  .tok:hover{background:var(--subtle-h)}
+  .budget{font-size:11px;color:var(--dimmer);font-variant-numeric:tabular-nums}
+  .budget.hot{color:var(--amber);font-weight:700}
+  .budget.over{color:var(--red);font-weight:700}
+
+  .warns{padding:6px 6px 0}
+  .warn{font-size:11.5px;color:var(--amber);padding:2px 0}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 6px 2px}
+  .actions .spacer{flex:1 1 auto}
+
+  /* summary (card-back compact panel) */
+  #summaryView{display:none;background:var(--panel);border-radius:8px;padding:10px 12px;max-width:100%}
+  body.tp-summary #summaryView{display:block}
+  body.tp-summary #app{display:none}
+  #summaryView .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  #summaryView .who{font-weight:700;color:var(--head);font-size:13px}
+  #summaryView .loc{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--blue);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+  #summaryView .snip2{display:flex;align-items:center;gap:8px;margin-top:8px}
+  #summaryView .snip2 .txt{flex:1;min-width:0;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,Menlo,Consolas,monospace}
+  #summaryView .foot{margin-top:8px;font-size:11px;color:var(--dimmer)}
+  #summaryView .foot b{color:var(--dim)}
+
+  @media (max-width:520px){ body{padding:12px 8px} .panel{padding:12px 12px} .chip{max-width:100%} }
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+
+<div id="summaryView">
+  <div class="row"><span class="loc" id="svLoc">—</span><span class="who" id="svWho">TF-Message</span>
+    <span style="margin-left:auto;font-size:10px;color:var(--dimmer)" id="svVer"></span></div>
+  <div class="snip2"><span class="txt" id="svSnip">No purchasing snippet found on this card.</span>
+    <button class="btn" id="svCopy">Copy</button></div>
+  <div class="foot" id="svFoot">Open the composer to generate a client message.</div>
+</div>
+
+<div class="panel" id="app">
+  <div class="head">
+    <span class="title">✉ TF-Message</span><span class="ver" id="verBadge"></span>
+    <button class="btn" id="gearBtn" title="Edit message wording" style="margin-left:auto">⚙ Settings</button>
+  </div>
+
+  <div class="client" id="clientStrip"></div>
+
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <div class="seg" role="group" aria-label="Location">
+      <button id="segDavis" aria-pressed="false">Davis</button>
+      <button id="segAS" aria-pressed="false">Aggie Square</button>
+    </div>
+    <span class="autochip" id="autoChip" hidden>auto-detected from card</span>
+  </div>
+
+  <div id="tplArea"></div>
+
+  <div class="fields" id="fields" hidden></div>
+
+  <div class="pvwrap">
+    <div class="pvhead"><span class="lbl">Preview</span><span class="hint">click into the message to tweak before copying</span></div>
+    <div class="pv" id="pv" contenteditable="true" spellcheck="true"><p class="empty">Pick a template above to compose a message.</p></div>
+    <div class="warns" id="warns"></div>
+    <div class="actions">
+      <button class="btn primary" id="copyRich">Copy message</button>
+      <button class="btn" id="copyPlain">Copy plain text</button>
+      <button class="btn" id="mailto">Open email draft</button>
+      <span class="spacer"></span>
+      <button class="btn" id="resetBtn" title="Rebuild the preview from the template, discarding edits">Reset preview</button>
+    </div>
+  </div>
+
+  <div class="setwrap" id="settings" hidden>
+    <div class="sethead"><span class="lbl">Message wording</span>
+      <span class="sub">changes save to this board and apply on every card</span>
+      <span class="modchip" id="modChip" hidden>modified</span></div>
+    <div class="fields" style="padding:8px 0 6px">
+      <div class="fld"><label for="setTpl">Template</label><select id="setTpl"></select></div>
+    </div>
+    <textarea id="setText" spellcheck="true" aria-label="Template text"></textarea>
+    <div class="toklegend" id="tokLegend"></div>
+    <div class="actions" style="padding-left:0;padding-right:0">
+      <button class="btn primary" id="setSave">Save for this board</button>
+      <button class="btn" id="setRevert">Revert to default</button>
+      <span class="budget" id="setBudget"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="setDone">Done</button>
+    </div>
+    <div class="warns" id="setWarns" style="padding-left:0"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   TF MESSAGE COMPOSER — Trello Power-Up
+   One hosted file serves four roles, chosen at load time:
+     - connector : hidden iframe Trello loads at the bare URL; registers the panel
+     - summary   : compact panel on the card back (?view=summary)
+     - editor    : full composer in a pop-out modal (?view=editor)
+     - standalone: file opened directly in a browser -> simulator w/ sample cards
+   Card data (description) is routed via URL parameters from the connector —
+   same approach that fixed the recharge simulator's iframe channel in v1.1 —
+   with t.card() as a fallback inside the iframes.
+   ===================================================================== */
+var VERSION = '1.8';
+var SELF = location.origin + location.pathname;
+
+/* =========================== CONFIG ==================================
+   Everything a human should ever need to edit lives in this block.     */
+var CONFIG = {
+  /* Box share links to the published PDF guides. Leave '' until published;
+     messages will show a yellow "link not set" marker instead of a URL.  */
+  LINKS: {
+    asPickupGuide:   '',   // Project Collection — Aggie Square (photo walkthrough)
+    asDropoffGuide:  '',   // Drop-off instructions — Aggie Square
+    davisPickupGuide:'',   // Project Collection — Davis TEAM box
+    davisDirections: '',   // Find Us — Davis (parking + entry)
+    asDirections:    '',   // Find Us — Aggie Square (parking + transit)
+    feedbackForm:    '',   // digital survey link (JotForm, Google Forms, Qualtrics, etc.)
+    intakeForm:      ''    // new-project submission form
+  },
+  FACTS: {
+    asAddress:    '4500 2nd Avenue, Room 1730, Sacramento, CA 95817',
+    asHours:      '7:00 AM\u20136:00 PM, weekdays',   /* NOTE: source docs disagree (6:00/6:30/7:00 open) — confirm */
+    asGarage:     'Aggie Square Garage, 2800 49th St, Sacramento, CA 95817',
+    davisAddress: '451 Health Sciences Drive, Room 1703 (GBSF), Davis, CA 95616',
+    davisPhone:   '(530) 746-8131',
+    teamBoxCode:  '1125',
+    orgName:      'UC Davis Tech Foundry'
+  },
+  /* Fixed keypad codes per Aggie Square locker (from AS_Locker_Codes) */
+  LOCKER_CODES: { 1:'1125', 2:'5482', 3:'7350', 4:'6022', 5:'7683', 6:'3205', 7:'9463', 8:'7423' }
+};
+/* ===================== end CONFIG ==================================== */
+
+function getParam(n){ try{ return new URLSearchParams(location.search).get(n); }catch(e){ return null; } }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function $(s){ return document.querySelector(s); }
+
+/* ---------------------- description parser --------------------------- */
+function parseDesc(desc){
+  var d = String(desc || '');
+  var out = { site:null, email:null, phone:null, pi:null, dept:null,
+              acct:null, budget:null, target:null, auth:null,
+              clientName:null, firstName:null, project:null,
+              snippet:null, secondary:null, clientDescription:null };
+  if(/Collection at Davis/i.test(d)) out.site = 'davis';
+  else if(/Collection at Aggie Square/i.test(d)) out.site = 'as';
+  var m = d.match(/Client Email:\s*\[?\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/);
+  if(m) out.email = m[1];
+  m = d.match(/Client Phone:\s*([()\d][()\d\s.\-]{6,20})/);
+  if(m) out.phone = m[1].trim();
+  m = d.match(/Department:\s*([^\n]*?)\s*PI:/);
+  if(m && m[1].trim()) out.dept = m[1].trim();
+  m = d.match(/PI:\s*([^\n]+)/);
+  if(m){ var pi = m[1].trim(); if(pi && !/^none$/i.test(pi)) out.pi = pi; }
+  m = d.match(/Secondary Contacts:\s*([^\n]*?)(?:,?\s*Physician Email|$)/);
+  if(m && m[1].trim() && m[1].trim() !== ',') out.secondary = m[1].replace(/\s{2,}/g,' ').trim();
+  var acctRe = /([0-9A-Za-z]{3,}(?:-[0-9A-Za-z]{2,}){5,})/g, best = null, mm;
+  while((mm = acctRe.exec(d))){ if(!best || mm[1].length > best.length) best = mm[1]; }
+  if(best) out.acct = best;
+  m = d.match(/Max Budget:\s*\$?\s*\$?\s*([\d][\d,]*(?:\.\d+)?)/);
+  if(m) out.budget = m[1];
+  m = d.match(/Target Completion Date\s*:?\s*([\d]{1,2}\/[\d]{1,2}\/[\d]{2,4})/);
+  if(m) out.target = m[1];
+  if(/Complete my request so long as it's within my budget/i.test(d)) out.auth = 'auto';
+  else if(/Send me a quote before proceeding/i.test(d)) out.auth = 'quote';
+  m = d.match(/Client Description:\s*([\s\S]*?)\s*Services:/);
+  if(m) out.clientDescription = m[1].replace(/\s+/g,' ').trim();
+  m = d.match(/Purchasing Snippet:\s*([\s\S]+)$/);
+  if(m){ var s = m[1].trim().replace(/^["'\u201c]+|["'\u201d]+$/g,'').trim(); if(s) out.snippet = s; }
+  var src = out.snippet || d;
+  m = src.match(/internal recharge project:\s*([^-\n]+?)\s+-\s+(.+?)\s+-\s*,/);
+  if(m){
+    out.clientName = m[1].replace(/\s{2,}/g,' ').trim();
+    out.project = m[2].replace(/\s{2,}/g,' ').trim();
+    out.firstName = out.clientName.split(/\s+/)[0] || null;
+  }
+  return out;
+}
+function buildSnippet(p, cardName){
+  var who = (p && p.clientName) || (p && p.pi) || 'Client';
+  var what = (p && p.project) || cardName || 'project';
+  var acct = (p && p.acct) || '[ACCOUNT STRING]';
+  return 'Supplies for internal recharge project: ' + who + ' - ' + what +
+         ' - , Recharge information:  Aggie Enterprise Acct:   ' + acct;
+}
+
+/* --------------------------- templates -------------------------------
+   Body blocks: string = paragraph; {ol:[..]} / {ul:[..]} = lists.
+   Paragraphs/items may embed tokens:
+     {{link:KEY|label}}  -> hyperlink from CONFIG.LINKS (or yellow marker if unset)
+     {{miss:label}}      -> yellow "fill me" marker                       */
+var F = CONFIG.FACTS, LNK = CONFIG.LINKS;
+
+/* ====================== editable message bodies =======================
+   Bodies are plain text with {tokens}. The Settings panel lets staff
+   edit the wording; overrides are stored board-wide (Trello pluginData,
+   'board'/'shared'/'msgTpl') so every card renders the same text.
+   Numbered lines ("1. ...") and dashed lines ("- ...") become lists.   */
+var SCOPE_FIELD = {k:'scope', label:'Scope', type:'seg',
+  options:[['complete','Entire project'],['partial','Partial delivery']], def:'complete'};
+
+var TOKEN_HELP = {
+  greeting:'\u201cHi <first name>,\u201d or \u201cHello,\u201d', signoff:'standard closing lines',
+  ready:'pickup opener \u2014 adapts to the Entire/Partial switch',
+  partialNote:'extra sentence shown only for partial deliveries',
+  locker:'selected locker number', code:'that locker\u2019s keypad code',
+  radoncCode:'RadOnc locker code', teamCode:'Davis TEAM box code',
+  asAddress:'Aggie Square address', asHours:'Aggie Square hours', asGarage:'Aggie Square garage info',
+  davisAddress:'Davis (GBSF) address', davisPhone:'Davis lab phone',
+  project:'project name from the card', projectRef:'\u201d\u2026 \u201cproject\u201d\u201d or blank', forProject:'\u201cfor \u2026\u201d or blank',
+  clientName:'client full name', firstName:'client first name', dept:'department', acct:'billing account string',
+  etaLine:'turnaround sentence (from the field)', authLine:'sentence matching the client\u2019s authorization choice',
+  amount:'quote total', validFor:'\u201c, valid for \u2026\u201d or blank',
+  acctPrompt:'asks to confirm or provide the account', acctBlock:'account string on its own line (or blank)',
+  reasonLine:'selected hold reason + details', whyClause:'\u201c due to \u2026\u201d or blank',
+  etaSentence:'revised-date sentence \u2014 switches to a TBD version when the checkbox is set',
+  carrier:'selected carrier', trackingLine:'tracking number line',
+  sinceClause:'\u201c since \u2026\u201d or blank', holdLine:'hold-until / pick-up-soon sentence',
+  dates:'closed dates', resumeClause:'\u201c on \u2026\u201d or blank',
+  snippetText:'the card\u2019s purchasing snippet (or one rebuilt from client + account)',
+  quoteBlock:'the pasted quote summary, kept formatted exactly as pasted'
+};
+function baseTokens(v, c){
+  var partial = (v.scope === 'partial');
+  return {
+    greeting: c.firstName ? ('Hi ' + c.firstName + ',') : 'Hello,',
+    signoff: 'Please let us know if you have any questions.\n\nBest regards,\nThe ' + F.orgName + ' Team',
+    ready: partial ? 'Good news \u2014 part of your project is ready for pickup'
+                   : 'Good news \u2014 your project is complete and ready for pickup',
+    partialNote: partial ? 'The remainder is still in progress, and we\u2019ll send another notice as soon as it\u2019s complete.' : '',
+    locker: v.locker || '{{miss:locker #}}',
+    code: CONFIG.LOCKER_CODES[v.locker] || '{{miss:code}}',
+    radoncCode: CONFIG.LOCKER_CODES[1],
+    teamCode: F.teamBoxCode,
+    asAddress: F.asAddress, asHours: F.asHours, asGarage: F.asGarage,
+    davisAddress: F.davisAddress, davisPhone: F.davisPhone,
+    project: c.project || '', firstName: c.firstName || '', clientName: c.clientName || '',
+    dept: c.dept || '', acct: c.acct || '',
+    projectRef: c.project ? (' \u201c' + c.project + '\u201d') : '',
+    forProject: c.project ? (' for \u201c' + c.project + '\u201d') : ''
+  };
+}
+
+var TEMPLATES = [
+  /* -------- Pickup -------- */
+  { id:'pickup_as', group:'Pick-up/Drop-off', site:'as', title:'Ready for pickup',
+    fields:[SCOPE_FIELD, {k:'locker',label:'Locker',type:'lockers'}],
+    text:
+'{greeting}\n\n' +
+'{ready}. We have placed it in locker {locker} inside the Aggie Square Building at {asAddress}. The lockers are directly across from our facility (Room 1730), and the building is accessible {asHours}. {partialNote}\n\n' +
+'To open the locker:\n1. Press C to wake the keypad.\n2. Enter the access code: {code}\n3. Press the key button. The locker will unlock.\n\n' +
+'Photo directions from the front entrance to the lockers: {{link:asPickupGuide|Aggie Square pickup guide}}\n\n' +
+'{signoff}' },
+  { id:'pickup_davis', group:'Pick-up/Drop-off', site:'davis', title:'Ready for pickup',
+    fields:[SCOPE_FIELD],
+    text:
+'{greeting}\n\n' +
+'{ready}. We have placed it in our secure pickup box at the rear of GBSF ({davisAddress}), in the loading-dock area on the west side of the building. The box is outside, so it is accessible 24 hours a day. {partialNote}\n\n' +
+'To open the box:\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. The box will open \u2014 please take only your items and close the lid.\n\n' +
+'If the box does not accept your input on the first try, simply enter the code again ({teamCode}#).\n\n' +
+'Photos and a map of the box location: {{link:davisPickupGuide|Davis pickup guide}}\n\n' +
+'{signoff}' },
+  { id:'pickup_radonc', group:'Pick-up/Drop-off', site:'as', title:'RadOnc collection point',
+    fields:[SCOPE_FIELD],
+    text:
+'{greeting}\n\n' +
+'{ready}. It\u2019s waiting at the Radiation Oncology Collection Point \u2014 the top-left green locker across from our facility (Room 1730) in the Aggie Square Building, {asAddress}. The building is accessible {asHours}. {partialNote}\n\n' +
+'To open the locker:\n1. Press C to wake the keypad.\n2. Enter the access code: {radoncCode}\n3. Press the key button. The locker will unlock.\n\n' +
+'Photo directions: {{link:asPickupGuide|Aggie Square pickup guide}}\n\n' +
+'{signoff}' },
+  /* -------- Drop-off -------- */
+  { id:'dropoff_as', group:'Pick-up/Drop-off', site:'as', title:'Drop-off instructions',
+    fields:[],
+    text:
+'{greeting}\n\n' +
+'You can drop your item off any weekday, {asHours}, using the green lockers across from our facility (Room 1730) in the Aggie Square Building at {asAddress}.\n\n' +
+'Select any unlocked locker on the right (numbered) bank, place your item inside, and set your own code:\n1. Press C to wake the keypad.\n2. Enter any 4-digit code of your choosing.\n3. Press the key button \u2014 the locker is now locked.\n\n' +
+'Then reply to this email with the locker number and the code you set, and we\u2019ll retrieve it.\n\n' +
+'Photo directions from the front entrance: {{link:asDropoffGuide|Aggie Square drop-off guide}}\n\n' +
+'{signoff}' },
+  { id:'dropoff_davis', group:'Pick-up/Drop-off', site:'davis', title:'Drop-off instructions',
+    fields:[],
+    text:
+'{greeting}\n\n' +
+'You can drop your item off any time using our secure box at the rear of GBSF ({davisAddress}), in the loading-dock area on the west side of the building. The box is outside, so it is accessible 24 hours a day.\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. Place your item inside and close the lid.\n\n' +
+'Please reply to this email once you\u2019ve dropped off so we know to collect it. During business hours you\u2019re also welcome to bring items directly to Room 1703 \u2014 call us at {davisPhone} from the south entry doors and we\u2019ll meet you.\n\n' +
+'Photos and a map of the box location: {{link:davisPickupGuide|Davis box guide}}\n\n' +
+'{signoff}' },
+  /* -------- Directions -------- */
+  { id:'dir_davis', group:'Directions', site:'davis', title:'Visiting us',
+    fields:[],
+    text:
+'{greeting}\n\n' +
+'We\u2019re located at {davisAddress}. Two parking lots sit adjacent to the building: Lot 53 (opens to the loading dock at the back, with free 30-minute spaces) and Lot 56A (metered, shared with Aggie Stadium).\n\n' +
+'When you arrive, call us at {davisPhone} from the south entry doors and we\u2019ll meet and escort you. Alternatively, the far-right door at the front of the building is unlocked during business hours \u2014 come in and make your way to Room 1703.\n\n' +
+'An annotated parking map: {{link:davisDirections|Find Us \u2014 Davis}}\n\n' +
+'{signoff}' },
+  { id:'dir_as', group:'Directions', site:'as', title:'Visiting us',
+    fields:[],
+    text:
+'{greeting}\n\n' +
+'We\u2019re in the Aggie Square Building at {asAddress}. For easiest access, park in the {asGarage} (entrances off 2nd Ave or Stockton Blvd). UC Davis affiliates should use the HonkMobile app and pay ahead of arrival for a discounted rate; visitors can pay at the lot ($2 per 15 min, $20/day max).\n\n' +
+'From the garage, head to the east entrance of the Aggie Square Building. The building is open {asHours} \u2014 if you\u2019re arriving outside those hours, let us know in advance so someone can open the door. We\u2019re in Room 1730, across from the green lockers.\n\n' +
+'If you\u2019re coming from Davis, the Causeway Connection is a zero-emission bus that runs between Davis and the Sacramento campus.\n\n' +
+'An annotated map with parking and entrances: {{link:asDirections|Find Us \u2014 Aggie Square}}\n\n' +
+'{signoff}' },
+  /* -------- Job status -------- */
+  { id:'received', group:'Job status', site:'any', title:'Request received',
+    fields:[{k:'eta',label:'Est. turnaround',type:'text',ph:'e.g. 5\u20137 business days'}],
+    tokens:function(v,c){ return {
+      etaLine: v.eta ? ('Our current estimated turnaround is ' + v.eta + '.')
+                     : 'We\u2019ll follow up shortly with an estimated turnaround.',
+      authLine: (c.auth === 'quote') ? 'You asked us to send a quote before proceeding, so you\u2019ll hear from us with pricing before any work begins.' :
+                (c.auth === 'auto')  ? ('You\u2019ve authorized us to proceed within your stated budget' + (c.budget ? (' of $' + c.budget) : '') + ', so we\u2019ll get started and keep you posted.') :
+                'We\u2019ll confirm scope and billing details before work begins.'
+    }; },
+    text:
+'{greeting}\n\nThanks for your submission{forProject} \u2014 it\u2019s in our queue and our team is reviewing it now. {etaLine}\n\n{authLine}\n\n{signoff}' },
+  { id:'quote', group:'Job status', site:'any', title:'Quote ready',
+    fields:[{k:'quote',label:'Quote summary (from Recharge tool)',type:'quote',ph:'Paste the full quote text here \u2014 the total auto-fills below'},
+            {k:'amount',label:'Quote total ($)',type:'text',ph:'e.g. 425.00'},
+            {k:'valid',label:'Valid for',type:'text',ph:'e.g. 30 days'}],
+    tokens:function(v,c){ return {
+      amount: v.amount ? ('$' + v.amount) : '{{miss:amount}}',
+      validFor: v.valid ? (', valid for ' + v.valid) : '',
+      acctPrompt: c.acct ? 'We have the following Aggie Enterprise account on file for billing \u2014 please confirm it is correct:'
+                         : 'Please also include the Aggie Enterprise account string (or PO) we should bill.',
+      acctBlock: c.acct || ''
+    }; },
+    text:
+'{greeting}\n\nYour quote{forProject} is ready: {amount}{validFor}.\n\n{quoteBlock}\n\n' +
+'To approve and start work, simply reply to this email with your confirmation. {acctPrompt}\n\n{acctBlock}\n\n{signoff}' },
+  { id:'hold', group:'Job status', site:'any', title:'On hold \u2014 need info',
+    fields:[{k:'reason',label:'Reason',type:'select',options:[
+        'File issue \u2014 the model needs repair before it can be produced',
+        'Billing \u2014 we need a valid account string before proceeding',
+        'Material decision \u2014 we need your material selection to proceed',
+        'Imaging \u2014 the DICOM series we received is incomplete',
+        'Other (describe below)'
+      ]},
+      {k:'detail',label:'Details (optional)',type:'textarea',ph:'Anything specific the client should send or decide'}],
+    tokens:function(v){ return { reasonLine: (v.reason || '{{miss:reason}}') + (v.detail ? (' ' + v.detail) : '') }; },
+    text:
+'{greeting}\n\nYour project{projectRef} is currently on hold \u2014 we need one thing from you before we can continue:\n\n{reasonLine}\n\n' +
+'Reply to this email and we\u2019ll pick the job right back up. Nothing is lost \u2014 it\u2019s simply paused in our queue.\n\n{signoff}' },
+  { id:'delay', group:'Job status', site:'any', title:'Delay notice',
+    fields:[{k:'eta',label:'Revised completion',type:'text',ph:'e.g. Friday 7/10'},
+            {k:'tbd',label:'Date TBD',type:'check',disables:'eta'},
+            {k:'why',label:'Reason (optional)',type:'text',ph:'e.g. a print failure on the first run'}],
+    tokens:function(v){ return {
+      whyClause: v.why ? (' due to ' + v.why) : '',
+      etaSentence: v.tbd
+        ? 'We don\u2019t have a firm revised completion date yet \u2014 we\u2019ll follow up with a new estimate as soon as we do, and we\u2019ll notify you the moment your project is ready.'
+        : ('Our revised completion estimate is ' + (v.eta || '{{miss:revised date}}') + '. We\u2019ll notify you the moment it\u2019s ready, and we appreciate your patience.')
+    }; },
+    text:
+'{greeting}\n\nA quick heads-up: your project{projectRef} is running behind our original estimate{whyClause}.\n\n' +
+'{etaSentence}\n\n{signoff}' },
+  { id:'shipped', group:'Job status', site:'any', title:'Shipped',
+    fields:[{k:'carrier',label:'Carrier',type:'select',options:['UPS','FedEx','USPS','Campus mail','Courier']},
+            {k:'tracking',label:'Tracking #',type:'text',ph:'1Z\u2026'}],
+    tokens:function(v){ return {
+      carrier: v.carrier || '{{miss:carrier}}',
+      trackingLine: v.tracking ? ('Tracking number: ' + v.tracking) : '{{miss:tracking number}}'
+    }; },
+    text:
+'{greeting}\n\nYour project{projectRef} has shipped via {carrier}.\n\n{trackingLine}\n\n{signoff}' },
+  { id:'overdue', group:'Job status', site:'any', title:'Pickup reminder',
+    fields:[{k:'since',label:'Ready since',type:'text',ph:'e.g. June 12'},
+            {k:'dispose',label:'Hold until (optional)',type:'text',ph:'e.g. July 31'}],
+    tokens:function(v){ return {
+      sinceClause: v.since ? (' since ' + v.since) : '',
+      holdLine: v.dispose ? ('Locker space is limited, so we can hold it until ' + v.dispose + ' \u2014 after that we\u2019ll move it into storage and pickup will require coordinating with staff.')
+                          : 'Locker space is limited, so please pick it up at your earliest convenience.'
+    }; },
+    text:
+'{greeting}\n\nA friendly reminder that your completed project{projectRef} has been ready for pickup{sinceClause}.\n\n{holdLine}\n\n' +
+'If the original pickup instructions are buried in your inbox, just reply and we\u2019ll resend them.\n\n{signoff}' },
+  { id:'done_fb', group:'Job status', site:'any', title:'Complete + feedback',
+    fields:[],
+    tokens:function(v,c){ return {
+      deptThanks: c.dept ? (' and the ' + c.dept + ' team') : ''
+    }; },
+    text:
+'{greeting}\n\nWe hope your project{projectRef} turned out exactly as you needed. It was a pleasure working with you{deptThanks}.\n\n' +
+'If you have two minutes, we\u2019d genuinely appreciate your feedback \u2014 it helps us improve and demonstrates the facility\u2019s impact: {{link:feedbackForm|quick survey}}\n\n' +
+'We\u2019d love to support your next project, too.\n\n{signoff}' },
+  /* -------- Admin -------- */
+  { id:'welcome', group:'Admin', site:'any', title:'New client welcome',
+    fields:[],
+    text:
+'{greeting}\n\nWelcome! The Tech Foundry is UC Davis\u2019s fabrication and prototyping facility, operating in Davis (GBSF, Room 1703) and at Aggie Square in Sacramento (Room 1730). Our services include CNC machining, 3D printing (SLA, MJF, FDM), laser cutting, DICOM processing, and engineering prototyping.\n\n' +
+'Work is billed through the campus recharge system. For UC Davis clients we bill an Aggie Enterprise account string; external clients are also welcome at our external rates.\n\n' +
+'To start a project, submit a request here: {{link:intakeForm|project intake form}} \u2014 and if you\u2019re not sure what you need, just describe the problem and we\u2019ll schedule a consult.\n\n{signoff}' },
+  { id:'psnip', group:'Admin', site:'any', title:'Purchasing snippet',
+    fields:[],
+    tokens:function(v,c){ return {
+      snippetText: currentSnippet().replace('[ACCOUNT STRING]','{{miss:account string}}')
+    }; },
+    text:'{snippetText}' },
+  { id:'closure', group:'Admin', site:'any', title:'Closure notice',
+    fields:[{k:'dates',label:'Closed dates',type:'text',ph:'e.g. Dec 22 \u2013 Jan 2'},
+            {k:'resume',label:'Reopening',type:'text',ph:'e.g. Monday, Jan 5'}],
+    tokens:function(v){ return {
+      dates: v.dates || '{{miss:dates}}',
+      resumeClause: v.resume ? (' on ' + v.resume) : ''
+    }; },
+    text:
+'{greeting}\n\nA heads-up that the Tech Foundry will be closed {dates}. Jobs submitted during the closure will be queued and reviewed when we return{resumeClause}.\n\n' +
+'Pickup boxes and lockers remain accessible during their normal hours if your project is already waiting for you.\n\n{signoff}' }
+];
+
+/* ---------------------- override storage + rendering ------------------ */
+var OVR = {};   // {tplId: overridden text} — board-wide via Trello pluginData
+function effectiveText(t){ return (typeof OVR[t.id] === 'string') ? OVR[t.id] : t.text; }
+function expandText(t){
+  var map = baseTokens(state.vals, state.parsed);
+  if(t.tokens){ var extra = t.tokens(state.vals, state.parsed); for(var k in extra) map[k] = extra[k]; }
+  return effectiveText(t).replace(/\{([A-Za-z]\w*)\}/g, function(m, k){ return (k in map) ? map[k] : m; });
+}
+function textToBlocks(txt){
+  var lines = String(txt).split('\n');
+  var blocks = [], para = [], list = null;
+  function flushPara(){ if(para.length){ blocks.push(para.join('\n')); para = []; } }
+  function flushList(){ if(list){ blocks.push(list.kind === 'ol' ? {ol:list.items} : {ul:list.items}); list = null; } }
+  lines.forEach(function(l){
+    var t = l.replace(/\s+/g, ' ').trim();
+    if(!t){ flushPara(); flushList(); return; }
+    if(t === '{quoteBlock}'){
+      flushPara(); flushList();
+      var q = (state.vals && state.vals.quote) ? String(state.vals.quote).replace(/\s+$/,'') : '';
+      if(q) blocks.push({pre:q});
+      return;
+    }
+    var mo = t.match(/^\d+[.)]\s+(.*)/), mu = t.match(/^-\s+(.*)/);
+    if(mo){ flushPara(); if(!list || list.kind !== 'ol'){ flushList(); list = {kind:'ol', items:[]}; } list.items.push(mo[1]); return; }
+    if(mu){ flushPara(); if(!list || list.kind !== 'ul'){ flushList(); list = {kind:'ul', items:[]}; } list.items.push(mu[1]); return; }
+    flushList(); para.push(t);
+  });
+  flushPara(); flushList();
+  return blocks;
+}
+
+/* ------------------------- state ------------------------------------ */
+var state = {
+  site: 'davis',            // 'davis' | 'as'
+  siteAuto: false,
+  cardName: '',
+  desc: '',
+  parsed: parseDesc(''),
+  cat: 'Pick-up/Drop-off',  // selected category (segmented)
+  tpl: null,                // selected template id
+  vals: {},                 // field values for current template
+  edited: false             // preview manually edited (suppress auto-rerender)
+};
+
+/* ---------------------- render helpers ------------------------------ */
+function tokensToHtml(s){
+  return esc(s)
+    .replace(/\{\{link:([A-Za-z]+)\|([^}]+)\}\}/g, function(_, key, label){
+      var url = LNK[key];
+      return url ? ('<a href="' + esc(url) + '">' + esc(label) + '</a>')
+                 : ('<span class="miss">[' + esc(label) + ' — Box link not set]</span>');
+    })
+    .replace(/\{\{miss:([^}]+)\}\}/g, function(_, label){
+      return '<span class="miss">[' + esc(label) + ']</span>';
+    })
+    .replace(/\n/g,'<br>');
+}
+function tokensToText(s){
+  return String(s)
+    .replace(/\{\{link:([A-Za-z]+)\|([^}]+)\}\}/g, function(_, key, label){
+      var url = LNK[key];
+      return url ? (label + ': ' + url) : ('[' + label + ' — link TBD]');
+    })
+    .replace(/\{\{miss:([^}]+)\}\}/g, function(_, label){ return '[' + label + ']'; });
+}
+function blocksToHtml(blocks){
+  return blocks.map(function(b){
+    if(typeof b === 'string') return '<p>' + tokensToHtml(b) + '</p>';
+    if(b && b.ol) return '<ol>' + b.ol.map(function(i){ return '<li>' + tokensToHtml(i) + '</li>'; }).join('') + '</ol>';
+    if(b && b.ul) return '<ul>' + b.ul.map(function(i){ return '<li>' + tokensToHtml(i) + '</li>'; }).join('') + '</ul>';
+    if(b && b.pre != null) return '<pre>' + esc(b.pre) + '</pre>';
+    return '';
+  }).join('');
+}
+function blocksToText(blocks){
+  return blocks.map(function(b){
+    if(typeof b === 'string') return tokensToText(b);
+    if(b && b.ol) return b.ol.map(function(i,x){ return (x+1) + '. ' + tokensToText(i); }).join('\n');
+    if(b && b.ul) return b.ul.map(function(i){ return '- ' + tokensToText(i); }).join('\n');
+    if(b && b.pre != null) return b.pre;
+    return '';
+  }).join('\n\n');
+}
+/* Convert the (possibly hand-edited) preview DOM to clipboard payloads */
+function previewToPayload(){
+  var pv = $('#pv');
+  var clone = pv.cloneNode(true);
+  clone.querySelectorAll('.miss').forEach(function(n){ n.replaceWith(document.createTextNode(n.textContent)); });
+  var html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45">' + clone.innerHTML + '</div>';
+  var text = '';
+  clone.childNodes.forEach(function(n){
+    if(n.nodeType !== 1) { text += n.textContent; return; }
+    if(n.tagName === 'OL' || n.tagName === 'UL'){
+      var i = 0;
+      n.querySelectorAll('li').forEach(function(li){ i++; text += (n.tagName==='OL' ? (i + '. ') : '- ') + li.textContent.trim() + '\n'; });
+      text += '\n';
+    } else {
+      var t = n.textContent.replace(/\u00a0/g,' ');
+      // preserve explicit line breaks inside paragraphs
+      var withBreaks = n.innerHTML.split(/<br\s*\/?>(?![^<]*>)/i).map(function(seg){
+        var tmp = document.createElement('div'); tmp.innerHTML = seg; return tmp.textContent;
+      }).join('\n');
+      text += (withBreaks || t).trim() + '\n\n';
+    }
+  });
+  // linkify anchors in plain text
+  clone.querySelectorAll('a').forEach(function(a){
+    if(a.href && text.indexOf(a.href) === -1) text = text.replace(a.textContent, a.textContent + ' (' + a.href + ')');
+  });
+  return { html: html, text: text.trim() };
+}
+
+/* --------------------------- clipboard ------------------------------ */
+function flashBtn(btn, ok){
+  var old = btn.textContent;
+  btn.textContent = ok ? 'Copied \u2713' : 'Copy failed';
+  btn.classList.toggle('ok', !!ok);
+  setTimeout(function(){ btn.textContent = old; btn.classList.remove('ok'); }, 1800);
+}
+function copyRich(html, text, btn){
+  var done = function(ok){ if(btn) flashBtn(btn, ok); };
+  try{
+    if(navigator.clipboard && window.ClipboardItem){
+      var item = new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([text], {type:'text/plain'})
+      });
+      navigator.clipboard.write([item]).then(function(){ done(true); }, function(){ copyPlainFallback(text, done); });
+      return;
+    }
+  }catch(e){}
+  copyPlainFallback(text, done);
+}
+function copyPlain(text, btn){
+  var done = function(ok){ if(btn) flashBtn(btn, ok); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ copyPlainFallback(text, done); });
+  } else copyPlainFallback(text, done);
+}
+function copyPlainFallback(text, done){
+  try{
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(ta); done(!!ok);
+  }catch(e){ done(false); }
+}
+
+var _t = null;
+
+/* --------------------------- UI build ------------------------------- */
+function setSite(site, auto){
+  state.site = site;
+  state.siteAuto = !!auto;
+  $('#segDavis').setAttribute('aria-pressed', site==='davis' ? 'true' : 'false');
+  $('#segAS').setAttribute('aria-pressed', site==='as' ? 'true' : 'false');
+  $('#autoChip').hidden = !auto;
+  buildTemplates();
+  // if current template doesn't fit new site, clear it
+  var t = TEMPLATES.find(function(x){ return x.id === state.tpl; });
+  if(t && t.site !== 'any' && t.site !== site){ state.tpl = null; state.vals = {}; buildFields(); renderPreview(); }
+}
+function buildClientStrip(){
+  var p = state.parsed, host = $('#clientStrip');
+  host.innerHTML = '';
+  function flashCopied(el){
+    el.classList.add('ok');
+    setTimeout(function(){ el.classList.remove('ok'); }, 1200);
+  }
+  function chip(label, display, copyVal){
+    var el = document.createElement('button'); el.type = 'button'; el.className = 'chip';
+    el.title = 'Click to copy';
+    el.innerHTML = (label ? ('<span class="k">' + esc(label) + '</span>') : '') + '<span class="val">' + esc(display) + '</span>';
+    el.onclick = function(){ copyPlain(copyVal, null); flashCopied(el); };
+    host.appendChild(el);
+  }
+  if(p.clientName){
+    var w = document.createElement('button'); w.type = 'button'; w.className = 'who';
+    w.textContent = p.clientName; w.title = 'Click to copy';
+    w.onclick = function(){ copyPlain(p.clientName, null); flashCopied(w); };
+    host.appendChild(w);
+  }
+  if(p.email) chip('', p.email, p.email);
+  if(p.phone) chip('', p.phone, p.phone);
+  if(p.pi) chip('PI', p.pi, p.pi);
+  if(p.dept) chip('Dept', p.dept, p.dept);
+  if(p.acct) chip('Acct', p.acct.length > 26 ? (p.acct.slice(0,12) + '\u2026' + p.acct.slice(-10)) : p.acct, p.acct);
+  if(!host.childNodes.length){
+    var n = document.createElement('span'); n.className='none';
+    n.textContent = 'No client details detected on this card \u2014 messages will use a generic greeting.';
+    host.appendChild(n);
+  }
+}
+function currentSnippet(){
+  return state.parsed.snippet || buildSnippet(state.parsed, state.cardName);
+}
+function buildTemplates(){
+  var host = $('#tplArea'); host.innerHTML = '';
+  var groups = [];
+  TEMPLATES.forEach(function(t){ if(groups.indexOf(t.group) === -1) groups.push(t.group); });
+  if(groups.indexOf(state.cat) === -1) state.cat = groups[0];
+
+  var bar = document.createElement('div'); bar.className = 'catbar';
+  var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Category');
+  groups.forEach(function(g){
+    var b = document.createElement('button'); b.textContent = g;
+    b.setAttribute('aria-pressed', state.cat === g ? 'true' : 'false');
+    b.onclick = function(){
+      if(state.cat === g) return;
+      state.cat = g;
+      state.tpl = null; state.vals = {}; state.edited = false;   // deselect: hide the stale preview
+      buildTemplates(); buildFields(); renderPreview();
+    };
+    seg.appendChild(b);
+  });
+  bar.appendChild(seg);
+  host.appendChild(bar);
+
+  var list = TEMPLATES.filter(function(t){ return t.group === state.cat && (t.site === 'any' || t.site === state.site); });
+  var row = document.createElement('div'); row.className = 'tgroup';
+  list.forEach(function(t){
+    var b = document.createElement('button'); b.className = 'tpl';
+    b.setAttribute('aria-pressed', state.tpl === t.id ? 'true' : 'false');
+    b.textContent = t.title;
+    b.onclick = function(){ selectTemplate(t.id); };
+    row.appendChild(b);
+  });
+  host.appendChild(row);
+}
+function selectTemplate(id){
+  state.tpl = id; state.vals = {}; state.edited = false;
+  var t = TEMPLATES.find(function(x){ return x.id === id; });
+  if(t){ state.cat = t.group; t.fields.forEach(function(f){ if(f.def) state.vals[f.k] = f.def; }); }
+  initSettings();
+  buildTemplates(); buildFields(); renderPreview();
+}
+function buildFields(){
+  var host = $('#fields'); host.innerHTML = '';
+  var t = TEMPLATES.find(function(x){ return x.id === state.tpl; });
+  if(!t || !t.fields.length){ host.hidden = true; return; }
+  host.hidden = false;
+  t.fields.forEach(function(f){
+    var wrap = document.createElement('div'); wrap.className = 'fld';
+    var lab = document.createElement('label'); lab.textContent = f.label; lab.htmlFor = 'f_' + f.k;
+    wrap.appendChild(lab);
+    var input;
+    if(f.type === 'seg'){
+      input = document.createElement('div'); input.className = 'seg'; input.setAttribute('role','group');
+      f.options.forEach(function(o){
+        var b = document.createElement('button'); b.type = 'button'; b.textContent = o[1];
+        b.setAttribute('aria-pressed', (state.vals[f.k] === o[0]) ? 'true' : 'false');
+        b.onclick = function(){
+          state.vals[f.k] = o[0]; state.edited = false;
+          input.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
+          b.setAttribute('aria-pressed','true');
+          renderPreview();
+        };
+        input.appendChild(b);
+      });
+      wrap.appendChild(input); host.appendChild(wrap); return;
+    }
+    if(f.type === 'lockers'){
+      input = document.createElement('div'); input.className = 'lockers'; input.setAttribute('role','group');
+      for(var i=1; i<=8; i++)(function(n){
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'lk'; b.dataset.n = n;
+        if(n === 1){
+          b.classList.add('rsv'); b.disabled = true;
+          b.innerHTML = '<span class="n">1</span><span class="c">RadOnc</span>';
+          b.title = 'Reserved — Radiation Oncology Collection Point';
+        } else {
+          b.setAttribute('aria-pressed', String(state.vals[f.k]) === String(n) ? 'true' : 'false');
+          b.innerHTML = '<span class="n">' + n + '</span><span class="c num">' + CONFIG.LOCKER_CODES[n] + '</span>';
+          b.onclick = function(){
+            state.vals[f.k] = String(n); state.edited = false;
+            input.querySelectorAll('.lk').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
+            b.setAttribute('aria-pressed','true');
+            renderPreview();
+          };
+        }
+        input.appendChild(b);
+      })(i);
+      wrap.appendChild(input); host.appendChild(wrap); return;
+    }
+    if(f.type === 'quote'){
+      wrap.classList.add('qwide');
+      var qrow = document.createElement('div'); qrow.className = 'qrow';
+      input = document.createElement('textarea'); input.placeholder = f.ph || '';
+      var pbtn = document.createElement('button'); pbtn.type = 'button'; pbtn.className = 'btn';
+      pbtn.textContent = 'Paste from clipboard';
+      var applyQuote = function(){
+        state.vals[f.k] = input.value; state.edited = false;
+        var tm = input.value.match(/TOTAL:\s*\$?\s*([\d,]+(?:\.\d+)?)/i);
+        if(tm){
+          state.vals.amount = tm[1];
+          var ai = document.getElementById('f_amount'); if(ai) ai.value = tm[1];
+        }
+        renderPreview();
+      };
+      pbtn.onclick = function(){
+        if(navigator.clipboard && navigator.clipboard.readText){
+          navigator.clipboard.readText().then(function(txt){
+            if(txt){ input.value = txt; applyQuote(); flashBtn(pbtn, true); }
+            else { input.focus(); flashBtn(pbtn, false); }
+          }, function(){
+            input.focus();
+            pbtn.textContent = 'Press Ctrl/\u2318+V here'; setTimeout(function(){ pbtn.textContent = 'Paste from clipboard'; }, 2200);
+          });
+        } else { input.focus(); pbtn.textContent = 'Press Ctrl/\u2318+V here'; setTimeout(function(){ pbtn.textContent = 'Paste from clipboard'; }, 2200); }
+      };
+      input.id = 'f_' + f.k;
+      input.oninput = input.onchange = applyQuote;
+      qrow.appendChild(input); qrow.appendChild(pbtn);
+      wrap.appendChild(qrow); host.appendChild(wrap); return;
+    }
+    if(f.type === 'check'){
+      wrap.classList.add('fchk');
+      input = document.createElement('input'); input.type = 'checkbox'; input.id = 'f_' + f.k;
+      input.onchange = function(){
+        state.vals[f.k] = input.checked; state.edited = false;
+        if(f.disables){
+          var tgt = document.getElementById('f_' + f.disables);
+          if(tgt){ tgt.disabled = input.checked; tgt.style.opacity = input.checked ? '.45' : ''; }
+        }
+        renderPreview();
+      };
+      lab.htmlFor = input.id;
+      var rowc = document.createElement('span'); rowc.className = 'chkrow';
+      rowc.appendChild(input);
+      wrap.appendChild(rowc); host.appendChild(wrap); return;
+    }
+    if(f.type === 'select'){
+      input = document.createElement('select');
+      var o0 = document.createElement('option'); o0.value=''; o0.textContent='— choose —'; input.appendChild(o0);
+      f.options.forEach(function(o){ var op = document.createElement('option'); op.value = o; op.textContent = o; input.appendChild(op); });
+    } else if(f.type === 'textarea'){
+      input = document.createElement('textarea'); input.placeholder = f.ph || '';
+    } else {
+      input = document.createElement('input'); input.type = 'text'; input.placeholder = f.ph || '';
+    }
+    input.id = 'f_' + f.k;
+    input.oninput = input.onchange = function(){
+      state.vals[f.k] = input.value; state.edited = false;
+      renderPreview();
+    };
+    wrap.appendChild(input);
+    host.appendChild(wrap);
+  });
+}
+function renderPreview(){
+  var t = TEMPLATES.find(function(x){ return x.id === state.tpl; });
+  var pv = $('#pv'), warns = $('#warns');
+  warns.innerHTML = '';
+  if(!t){
+    pv.innerHTML = '<p class="empty">Pick a template above to compose a message.</p>';
+    return;
+  }
+  if(state.edited) return;  // don't clobber manual edits until Reset/re-pick
+  pv.innerHTML = blocksToHtml(textToBlocks(expandText(t)));
+  // warnings
+  var missing = pv.querySelectorAll('.miss');
+  if(missing.length){
+    var byLink = 0, byField = 0;
+    missing.forEach(function(m){ if(/Box link not set/.test(m.textContent)) byLink++; else byField++; });
+    if(byField) addWarn(byField + ' field' + (byField>1?'s':'') + ' still need' + (byField>1?'':'s') + ' a value — highlighted in the preview.');
+    if(byLink) addWarn('A Box link is not configured yet (see CONFIG.LINKS at the top of this file). The copied message will say \u201clink TBD\u201d.');
+  }
+}
+function addWarn(txt){
+  var w = document.createElement('div'); w.className = 'warn'; w.textContent = '\u26a0 ' + txt;
+  $('#warns').appendChild(w);
+}
+
+/* ------------------------ hydrate + boot ---------------------------- */
+function hydrate(cardName, desc){
+  state.cardName = cardName || '';
+  state.desc = desc || '';
+  state.parsed = parseDesc(desc);
+  if(state.parsed.site) setSite(state.parsed.site, true);
+  else setSite(state.site, false);
+  buildClientStrip(); renderPreview();
+}
+/* ---------------------- settings (wording editor) -------------------- */
+var OVR_LIMIT = 3800;   // Trello pluginData caps a scope around 4096 chars — stay under
+var SET = { cur:null };
+function siteLabel(x){ return x==='as' ? 'Aggie Square' : (x==='davis' ? 'Davis' : 'Both sites'); }
+function ovrSize(){ try{ return JSON.stringify(OVR).length; }catch(e){ return 0; } }
+function updateBudget(){
+  var el = $('#setBudget'); if(!el) return;
+  var n = ovrSize();
+  el.textContent = n + ' / ' + OVR_LIMIT + ' chars stored';
+  el.className = 'budget' + (n > OVR_LIMIT ? ' over' : (n > OVR_LIMIT*0.85 ? ' hot' : ''));
+}
+function buildSetOptions(){
+  var sel = $('#setTpl'); sel.innerHTML = '';
+  var groups = [];
+  TEMPLATES.forEach(function(t){ if(groups.indexOf(t.group) === -1) groups.push(t.group); });
+  groups.forEach(function(g){
+    var og = document.createElement('optgroup'); og.label = g;
+    TEMPLATES.filter(function(t){ return t.group === g; }).forEach(function(t){
+      var o = document.createElement('option'); o.value = t.id;
+      o.textContent = t.title + ' · ' + siteLabel(t.site) + ((t.id in OVR) ? ' • modified' : '');
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+}
+function loadSetTpl(id){
+  var t = TEMPLATES.find(function(x){ return x.id === id; }) || TEMPLATES[0];
+  SET.cur = t.id;
+  $('#setTpl').value = t.id;
+  $('#setText').value = effectiveText(t);
+  $('#modChip').hidden = !(t.id in OVR);
+  // token legend: tokens present in the *default* text, plus link markers note
+  var host = $('#tokLegend'); host.innerHTML = '';
+  var seen = {}, re = /\{([A-Za-z]\w*)\}/g, m;
+  while((m = re.exec(t.text))){ seen[m[1]] = true; }
+  Object.keys(seen).forEach(function(k){
+    var el = document.createElement('span'); el.className = 'tok';
+    el.innerHTML = '<b>{' + esc(k) + '}</b> ' + esc(TOKEN_HELP[k] || '');
+    el.title = 'Click to insert at cursor';
+    el.onclick = function(){
+      var ta = $('#setText'), pos = ta.selectionStart || ta.value.length;
+      ta.value = ta.value.slice(0, pos) + '{' + k + '}' + ta.value.slice(ta.selectionEnd || pos);
+      ta.focus(); ta.selectionStart = ta.selectionEnd = pos + k.length + 2;
+    };
+    host.appendChild(el);
+  });
+  var note = document.createElement('span'); note.className = 'tok';
+  note.innerHTML = '<b>{{link:…}}</b> keep these markers — they become the configured Box links';
+  host.appendChild(note);
+  updateBudget();
+}
+function persistOverrides(btn){
+  var done = function(ok){ if(btn) flashBtn(btn, ok); };
+  if(_t){
+    try{
+      var pr = _t.set('board','shared','msgTpl', OVR);
+      if(pr && pr.then){ pr.then(function(){ done(true); }, function(){ relayOverrides(); done(true); }); }
+      else done(true);
+    }catch(e){ relayOverrides(); done(true); }
+  } else {
+    done(true);
+    setWarn('Running outside Trello — wording changes apply to this session only.');
+  }
+}
+function relayOverrides(){
+  /* Backup path: hand the payload to the connector iframe, whose Trello
+     channel outlives this modal (same pattern as the recharge simulator). */
+  try{ new BroadcastChannel('tf-msg').postMessage({ type:'saveTpl', data: OVR }); }catch(e){}
+}
+function setWarn(txt){
+  var host = $('#setWarns'); host.innerHTML = '';
+  if(!txt) return;
+  var w = document.createElement('div'); w.className = 'warn'; w.textContent = '⚠ ' + txt;
+  host.appendChild(w);
+}
+function initSettings(){
+  $('#gearBtn').onclick = function(){
+    var el = $('#settings');
+    el.hidden = !el.hidden;
+    if(!el.hidden){ buildSetOptions(); loadSetTpl(state.tpl || TEMPLATES[0].id); try{ el.scrollIntoView({block:'nearest'}); }catch(e){} }
+  };
+  $('#setTpl').onchange = function(){ setWarn(''); loadSetTpl(this.value); };
+  $('#setSave').onclick = function(){
+    var t = TEMPLATES.find(function(x){ return x.id === SET.cur; }); if(!t) return;
+    var txt = $('#setText').value;
+    setWarn('');
+    var prev = OVR[t.id];
+    if(txt === t.text){ delete OVR[t.id]; }
+    else { OVR[t.id] = txt; }
+    if(ovrSize() > OVR_LIMIT){
+      // roll back and refuse — Trello would silently truncate/reject
+      if(prev === undefined) delete OVR[t.id]; else OVR[t.id] = prev;
+      updateBudget();
+      setWarn('Too much customized text to store on the board (' + OVR_LIMIT + ' char limit). Shorten this edit or revert another template first.');
+      return;
+    }
+    persistOverrides($('#setSave'));
+    $('#modChip').hidden = !(t.id in OVR);
+    buildSetOptions(); $('#setTpl').value = t.id;
+    updateBudget();
+    state.edited = false; renderPreview();
+  };
+  $('#setRevert').onclick = function(){
+    var t = TEMPLATES.find(function(x){ return x.id === SET.cur; }); if(!t) return;
+    delete OVR[t.id];
+    persistOverrides($('#setRevert'));
+    loadSetTpl(t.id); buildSetOptions(); $('#setTpl').value = t.id;
+    setWarn('');
+    state.edited = false; renderPreview();
+  };
+  $('#setDone').onclick = function(){ $('#settings').hidden = true; };
+}
+
+function initFullApp(){
+  $('#verBadge').textContent = 'v' + VERSION;
+  $('#segDavis').onclick = function(){ setSite('davis', false); };
+  $('#segAS').onclick = function(){ setSite('as', false); };
+  $('#pv').addEventListener('input', function(){ state.edited = true; });
+  $('#resetBtn').onclick = function(){ state.edited = false; renderPreview(); };
+  $('#copyRich').onclick = function(){ var p = previewToPayload(); copyRich(p.html, p.text, $('#copyRich')); };
+  $('#copyPlain').onclick = function(){ var p = previewToPayload(); copyPlain(p.text, $('#copyPlain')); };
+  $('#mailto').onclick = function(){
+    var p = previewToPayload();
+    var to = state.parsed.email || '';
+    var url = 'mailto:' + encodeURIComponent(to) + '?body=' + encodeURIComponent(p.text);
+    if(url.length > 1900) addWarn('This message is long for a mailto: link — some mail clients may truncate it. \u201cCopy message\u201d is more reliable.');
+    try{ if(_t && _t.navigate){ _t.navigate({url:url}); } else { window.open(url, '_blank') || (location.href = url); } }
+    catch(e){ location.href = url; }
+  };
+  initSettings();
+  buildTemplates(); buildFields(); renderPreview();
+}
+
+function initStandalone(){
+  initFullApp();
+  hydrate('', '');
+}
+
+/* ---------------------- Trello context dispatch ---------------------- */
+var TRELLO_ICON = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>');
+
+function buildDataParam(name, desc, ovr){
+  try{ return encodeURIComponent(JSON.stringify({ n:name||'', d:desc||'', o:ovr||{} })); }
+  catch(e){ return ''; }
+}
+var _lastCardT = null;
+function initConnector(){
+  try{
+    var bc = new BroadcastChannel('tf-msg');
+    bc.onmessage = function(m){
+      var msg = m && m.data;
+      if(!msg || msg.type !== 'saveTpl' || !_lastCardT) return;
+      try{ _lastCardT.set('board','shared','msgTpl', msg.data); }catch(e){}
+    };
+  }catch(e){}
+  window.TrelloPowerUp.initialize({
+    'card-back-section': function(t){
+      _lastCardT = t;
+      var reads = Promise.all([
+        t.card('name','desc').catch(function(){ return {name:'',desc:''}; }),
+        t.get('board','shared','msgTpl').catch(function(){ return {}; })
+      ]);
+      var timeout = new Promise(function(res){ setTimeout(function(){ res([{name:'',desc:''},{}]); }, 1800); });
+      return Promise.race([reads, timeout]).then(function(r){
+        var card = r[0] || {}, ovr = r[1] || {};
+        var dstr = buildDataParam(card.name, card.desc, ovr);
+        var sUrl = SELF + '?view=summary&cb=' + Date.now() + '&d=' + dstr;
+        var eUrl = SELF + '?view=editor&cb=' + Date.now() + '&d=' + dstr;
+        try{ if(t.signUrl){ sUrl = t.signUrl(sUrl); } }catch(e){}
+        return {
+          title: 'TF-Message',
+          icon: TRELLO_ICON,
+          content: { type:'iframe', url: sUrl, height: 108 },
+          action: { text: 'Open', callback: function(tt){
+            return tt.modal({ url: eUrl, fullscreen: false, height: 980, title: '', accentColor: '#242528' });
+          } }
+        };
+      });
+    }
+  });
+}
+function detectTheme(t){
+  try{ var c = t.getContext && t.getContext(); if(c && (c.theme==='dark'||c.theme==='light')) return c.theme; }catch(e){}
+  var a = document.documentElement.getAttribute('data-color-mode');
+  return (a==='dark'||a==='light') ? a : 'dark';
+}
+function applyTheme(t){ document.documentElement.setAttribute('data-color-mode', detectTheme(t)); }
+
+function readDataParam(){
+  var d = getParam('d');
+  if(!d) return null;
+  try{ return JSON.parse(d); }catch(e){ return null; }
+}
+function initSummary(){
+  var t = window.TrelloPowerUp.iframe(); _t = t;
+  applyTheme(t);
+  [150,600,1600].forEach(function(ms){ setTimeout(function(){ applyTheme(t); }, ms); });
+  $('#svVer').textContent = 'v' + VERSION;
+  var fill = function(name, desc){
+    var p = parseDesc(desc || '');
+    $('#svLoc').textContent = p.site === 'as' ? 'Aggie Sq' : (p.site === 'davis' ? 'Davis' : 'no pref');
+    $('#svWho').textContent = p.clientName || name || 'TF-Message';
+    var snip = p.snippet || (p.acct ? buildSnippet(p, name) : null);
+    var st = $('#svSnip');
+    if(snip){ st.textContent = snip; $('#svCopy').disabled = false;
+      $('#svCopy').onclick = function(){ copyPlain(snip, $('#svCopy')); };
+    } else { st.textContent = 'No purchasing snippet found on this card.'; $('#svCopy').disabled = true; }
+    $('#svFoot').innerHTML = (p.email ? ('<b>' + esc(p.email) + '</b> \u00b7 ') : '') + 'Open the composer to generate a client message.';
+    try{ if(t.sizeTo) t.sizeTo('#summaryView'); }catch(e){}
+  };
+  var dp = readDataParam();                    // primary: URL-routed data
+  if(dp){ fill(dp.n, dp.d); }
+  else {                                       // fallback: iframe channel
+    try{
+      t.render(function(){
+        t.card('name','desc').then(function(c){ fill(c.name, c.desc); }, function(){ fill('',''); });
+      });
+    }catch(e){ fill('',''); }
+    setTimeout(function(){ if(!$('#svWho').textContent) fill('',''); }, 3000);
+  }
+  [400,1200,2400].forEach(function(ms){ setTimeout(function(){ try{ if(t.sizeTo) t.sizeTo('#summaryView'); }catch(e){} }, ms); });
+}
+function initEditor(){
+  try{ _t = window.TrelloPowerUp.iframe(); }catch(e){ _t = null; }
+  if(_t){ applyTheme(_t); [200,800,2000].forEach(function(ms){ setTimeout(function(){ applyTheme(_t); }, ms); }); }
+  initFullApp();
+  var dp = readDataParam();                    // primary: URL-routed data
+  if(dp){
+    if(dp.o && typeof dp.o === 'object') OVR = dp.o;
+    hydrate(dp.n, dp.d);
+  }
+  else if(_t){                                 // fallback: iframe channel
+    Promise.all([
+      _t.card('name','desc').catch(function(){ return {name:'',desc:''}; }),
+      _t.get('board','shared','msgTpl').catch(function(){ return {}; })
+    ]).then(function(r){
+      if(r[1] && typeof r[1] === 'object') OVR = r[1];
+      hydrate(r[0].name, r[0].desc);
+    }, function(){ hydrate('',''); });
+  } else hydrate('','');
+  setTimeout(function(){ try{ document.body.setAttribute('tabindex','-1'); document.body.focus({preventScroll:true}); }catch(e){} }, 120);
+}
+function boot(){
+  var view = getParam('view');
+  var framed = (window.self !== window.top);
+  var hasTrello = (typeof window.TrelloPowerUp !== 'undefined');
+  if(hasTrello && framed && view === 'summary'){ document.body.classList.add('tp-summary'); initSummary(); }
+  else if(hasTrello && framed && view === 'editor'){ initEditor(); }
+  else if(hasTrello && framed && !view){ document.body.classList.add('tp-connector'); document.getElementById('app').style.display='none'; initConnector(); }
+  else { initStandalone(); }
+}
+boot();
+</script>
+</body>
+</html>
