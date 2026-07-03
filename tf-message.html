@@ -224,6 +224,10 @@
       <button id="segAS" aria-pressed="false">Aggie Square</button>
       <button id="segUnk" aria-pressed="false">Unknown</button>
     </div>
+    <div class="seg" role="group" aria-label="Client type">
+      <button id="tierInt" aria-pressed="true">Internal</button>
+      <button id="tierExt" aria-pressed="false">External</button>
+    </div>
     <span class="autochip" id="autoChip" hidden>auto-detected from card</span>
     <span style="flex:1 1 auto"></span>
     <span class="sofflbl">Sign-off</span>
@@ -288,7 +292,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.12';
+var VERSION = '1.13';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -303,7 +307,8 @@ var CONFIG = {
     davisDirections: '',   // Find Us — Davis (parking + entry)
     asDirections:    '',   // Find Us — Aggie Square (parking + transit)
     feedbackForm:    '',   // digital survey link (JotForm, Google Forms, Qualtrics, etc.)
-    intakeForm:      ''    // new-project submission form
+    intakeForm:      '',   // new-project submission form (internal)
+    extIntakeForm:   ''    // external service request form
   },
   FACTS: {
     asAddress:    '4500 2nd Avenue, Room 1730, Sacramento, CA 95817',
@@ -326,10 +331,11 @@ function $(s){ return document.querySelector(s); }
 /* ---------------------- description parser --------------------------- */
 function parseDesc(desc){
   var d = String(desc || '');
-  var out = { site:null, email:null, phone:null, pi:null, dept:null,
+  var out = { site:null, tier:'internal', email:null, phone:null, pi:null, dept:null,
               acct:null, budget:null, target:null, auth:null,
               clientName:null, firstName:null, project:null,
               snippet:null, secondary:null, clientDescription:null };
+  if(/EXTERNAL SERVICE REQUEST/i.test(d)) out.tier = 'external';
   if(/Collection at Davis/i.test(d)) out.site = 'davis';
   else if(/Collection at Aggie Square/i.test(d)) out.site = 'as';
   var m = d.match(/Client Email:\s*\[?\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/);
@@ -347,7 +353,7 @@ function parseDesc(desc){
   if(best) out.acct = best;
   m = d.match(/Max Budget:\s*\$?\s*\$?\s*([\d][\d,]*(?:\.\d+)?)/);
   if(m) out.budget = m[1];
-  m = d.match(/Target Completion Date\s*:?\s*([\d]{1,2}\/[\d]{1,2}\/[\d]{2,4})/);
+  m = d.match(/(?:Target Completion Date|Ideal Date of Completion)\s*:?\s*([\d]{1,2}\/[\d]{1,2}\/[\d]{2,4})/);
   if(m) out.target = m[1];
   if(/Complete my request so long as it's within my budget/i.test(d)) out.auth = 'auto';
   else if(/Send me a quote before proceeding/i.test(d)) out.auth = 'quote';
@@ -356,11 +362,18 @@ function parseDesc(desc){
   m = d.match(/Purchasing Snippet:\s*([\s\S]+)$/);
   if(m){ var s = m[1].trim().replace(/^["'\u201c]+|["'\u201d]+$/g,'').trim(); if(s) out.snippet = s; }
   var src = out.snippet || d;
-  m = src.match(/internal recharge project:\s*([^-\n]+?)\s+-\s+(.+?)\s+-\s*,/);
+  m = src.match(/(?:internal|external) recharge project:\s*(.+)$/m);
   if(m){
-    out.clientName = m[1].replace(/\s{2,}/g,' ').trim();
-    out.project = m[2].replace(/\s{2,}/g,' ').trim();
-    out.firstName = out.clientName.split(/\s+/)[0] || null;
+    var tail = m[1];
+    var cut = tail.indexOf(' - ,');                    // internal format: "Name - Project - , Recharge..."
+    if(cut !== -1) tail = tail.slice(0, cut);
+    var dash = tail.indexOf('-');
+    if(dash > 0){
+      var nm = tail.slice(0, dash).replace(/\s{2,}/g,' ').trim();
+      var pj = tail.slice(dash + 1).replace(/^[\s-]+/,'').replace(/[\s-]+$/,'').replace(/\s{2,}/g,' ').trim();
+      if(nm){ out.clientName = nm; out.firstName = nm.split(/\s+/)[0] || null; }
+      if(pj) out.project = pj;
+    }
   }
   return out;
 }
@@ -368,6 +381,8 @@ function buildSnippet(p, cardName){
   var who = (p && p.clientName) || (p && p.pi) || 'Client';
   var what = (p && p.project) || cardName || 'project';
   var acct = (p && p.acct) || '[ACCOUNT STRING]';
+  var tier = (p && p.tier) === 'external' ? 'external' : 'internal';
+  if(tier === 'external') return 'Supplies for external recharge project: ' + who + ' - ' + what;
   return 'Supplies for internal recharge project: ' + who + ' - ' + what +
          ' - , Recharge information:  Aggie Enterprise Acct:   ' + acct;
 }
@@ -406,8 +421,11 @@ var TOKEN_HELP = {
   carrier:'selected carrier', trackingLine:'tracking number line',
   sinceClause:'\u201c since \u2026\u201d or blank', holdLine:'hold-until / pick-up-soon sentence',
   dates:'closed dates', resumeClause:'\u201c on \u2026\u201d or blank',
-  snippetText:'the card\u2019s purchasing snippet (or one rebuilt from client + account)',
+  snippetBlock:'the card\u2019s purchasing snippet, verbatim (or one rebuilt from client + account)',
   askLine:'the time proposal \u2014 phrasing follows the Exact/Range slider',
+  amountClause:'\u201c totaling $\u2026\u201d or blank', validClause:'estimate validity sentence or blank',
+  billingLine:'billing sentence \u2014 follows the Internal/External slider',
+  startLine:'how-to-start sentence with the right intake link \u2014 follows the Internal/External slider',
   platformLine:'meeting-format sentence \u2014 follows the platform slider (address for in-person, client\u2019s phone for calls)',
   quoteBlock:'the pasted quote summary, kept formatted exactly as pasted'
 };
@@ -556,9 +574,11 @@ var TEMPLATES = [
     tokens:function(v,c){ return {
       etaLine: v.eta ? ('Our current estimated turnaround is ' + v.eta + '.')
                      : 'We\u2019ll follow up shortly with an estimated turnaround.',
-      authLine: (c.auth === 'quote') ? 'You asked us to send a quote before proceeding, so you\u2019ll hear from us with pricing before any work begins.' :
-                (c.auth === 'auto')  ? ('You\u2019ve authorized us to proceed within your stated budget' + (c.budget ? (' of $' + c.budget) : '') + ', so we\u2019ll get started and keep you posted.') :
-                'We\u2019ll confirm scope and billing details before work begins.'
+      authLine: (state.tier === 'external')
+        ? 'Because this is an external service request, we\u2019ll prepare an estimate after reviewing your submission and route it to you via DocuSign \u2014 work begins as soon as the document is signed.'
+        : ((c.auth === 'quote') ? 'You asked us to send a quote before proceeding, so you\u2019ll hear from us with pricing before any work begins.' :
+           (c.auth === 'auto')  ? ('You\u2019ve authorized us to proceed within your stated budget' + (c.budget ? (' of $' + c.budget) : '') + ', so we\u2019ll get started and keep you posted.') :
+           'We\u2019ll confirm scope and billing details before work begins.')
     }; },
     text:
 '{greeting}\n\nThanks for your submission{forProject} \u2014 it\u2019s in our queue and our team is reviewing it now. {etaLine}\n\n{authLine}\n\n{signoff}' },
@@ -569,13 +589,25 @@ var TEMPLATES = [
     tokens:function(v,c){ return {
       amount: v.amount ? ('$' + v.amount) : '{{miss:amount}}',
       validFor: v.valid ? (', valid for ' + v.valid) : '',
-      acctPrompt: c.acct ? 'We have the following Aggie Enterprise account on file for billing \u2014 please confirm it is correct:'
-                         : 'Please also include the Aggie Enterprise account string (or PO) we should bill.',
-      acctBlock: c.acct || ''
+      acctPrompt: (state.tier === 'external')
+        ? 'We\u2019ll route the estimate to you via DocuSign \u2014 once it\u2019s signed, we\u2019ll get started right away.'
+        : (c.acct ? 'We have the following Aggie Enterprise account on file for billing \u2014 please confirm it is correct:'
+                  : 'Please also include the Aggie Enterprise account string (or PO) we should bill.'),
+      acctBlock: (state.tier === 'external') ? '' : (c.acct || '')
     }; },
     text:
 '{greeting}\n\nYour quote{forProject} is ready: {amount}{validFor}.\n\n{quoteBlock}\n\n' +
 'To approve and start work, simply reply to this email with your confirmation. {acctPrompt}\n\n{acctBlock}\n\n{signoff}' },
+  { id:'docusign', group:'Job status', site:'any', tier:'external', title:'Estimate sent (DocuSign)',
+    fields:[{k:'amount',label:'Estimate total ($)',type:'text',ph:'e.g. 425.00'},
+            {k:'valid',label:'Valid for',type:'text',ph:'e.g. 30 days'}],
+    tokens:function(v){ return {
+      amountClause: v.amount ? (' totaling $' + v.amount) : '',
+      validClause: v.valid ? (' The estimate is valid for ' + v.valid + '.') : ''
+    }; },
+    text:
+'{greeting}\n\nThank you for your service request{projectRef}. We\u2019ve completed our review and prepared an estimate{amountClause}. You\u2019ll receive it shortly via DocuSign \u2014 once the document is signed, we\u2019ll begin work right away.{validClause}\n\n' +
+'If anything in the estimate needs discussion, just reply to this email.\n\n{signoff}' },
   { id:'hold', group:'Job status', site:'any', title:'On hold \u2014 need info',
     fields:[{k:'reason',label:'Reason',type:'select',options:[
         'File issue \u2014 the model needs repair before it can be produced',
@@ -634,16 +666,23 @@ var TEMPLATES = [
   /* -------- Admin -------- */
   { id:'welcome', group:'Admin', site:'any', title:'New client welcome',
     fields:[],
+    tokens:function(v,c){
+      var ext = (state.tier === 'external');
+      return {
+        billingLine: ext
+          ? 'External clients are billed at our external rates; work begins after a signed estimate, which we route via DocuSign.'
+          : 'Work is billed through the campus recharge system \u2014 for UC Davis clients we bill an Aggie Enterprise account string.',
+        startLine: ext
+          ? 'To start a project, submit an external service request here: {{link:extIntakeForm|external service request form}} \u2014 we\u2019ll review it, send an estimate via DocuSign, and begin work once it\u2019s signed.'
+          : 'To start a project, submit a request here: {{link:intakeForm|project intake form}} \u2014 and if you\u2019re not sure what you need, just describe the problem and we\u2019ll schedule a consult.'
+      };
+    },
     text:
 '{greeting}\n\nWelcome! The Tech Foundry is UC Davis\u2019s fabrication and prototyping facility, operating in Davis (GBSF, Room 1703) and at Aggie Square in Sacramento (Room 1730). Our services include CNC machining, 3D printing (SLA, MJF, FDM), laser cutting, DICOM processing, and engineering prototyping.\n\n' +
-'Work is billed through the campus recharge system. For UC Davis clients we bill an Aggie Enterprise account string; external clients are also welcome at our external rates.\n\n' +
-'To start a project, submit a request here: {{link:intakeForm|project intake form}} \u2014 and if you\u2019re not sure what you need, just describe the problem and we\u2019ll schedule a consult.\n\n{signoff}' },
+'{billingLine}\n\n{startLine}\n\n{signoff}' },
   { id:'psnip', group:'Admin', site:'any', title:'Purchasing snippet',
     fields:[],
-    tokens:function(v,c){ return {
-      snippetText: currentSnippet().replace('[ACCOUNT STRING]','{{miss:account string}}')
-    }; },
-    text:'{snippetText}' },
+    text:'{snippetBlock}' },
   { id:'closure', group:'Admin', site:'any', title:'Closure notice',
     fields:[{k:'dates',label:'Closed dates',type:'text',ph:'e.g. Dec 22 \u2013 Jan 2'},
             {k:'resume',label:'Reopening',type:'text',ph:'e.g. Monday, Jan 5'}],
@@ -702,6 +741,11 @@ function textToBlocks(txt){
       if(q) blocks.push({pre:q});
       return;
     }
+    if(t === '{snippetBlock}'){
+      flushPara(); flushList();
+      blocks.push({pre: currentSnippet()});
+      return;
+    }
     var mo = t.match(/^\d+[.)]\s+(.*)/), mu = t.match(/^-\s+(.*)/);
     if(mo){ flushPara(); if(!list || list.kind !== 'ol'){ flushList(); list = {kind:'ol', items:[]}; } list.items.push(mo[1]); return; }
     if(mu){ flushPara(); if(!list || list.kind !== 'ul'){ flushList(); list = {kind:'ul', items:[]}; } list.items.push(mu[1]); return; }
@@ -719,6 +763,7 @@ var state = {
   desc: '',
   parsed: parseDesc(''),
   cat: 'Pick-up/Drop-off',  // selected category (segmented)
+  tier: 'internal',         // 'internal' | 'external' client family
   signoff: 'team',          // 'team' | 'personal' (per-member preference)
   memberFirst: '',          // logged-in Trello member's first name
   tpl: null,                // selected template id
@@ -834,6 +879,16 @@ function copyPlainFallback(text, done){
 var _t = null;
 
 /* --------------------------- UI build ------------------------------- */
+function setTier(tier){
+  state.tier = tier;
+  $('#tierInt').setAttribute('aria-pressed', tier==='internal' ? 'true' : 'false');
+  $('#tierExt').setAttribute('aria-pressed', tier==='external' ? 'true' : 'false');
+  buildTemplates();
+  var t = TEMPLATES.find(function(x){ return x.id === state.tpl; });
+  if(t && t.tier && t.tier !== tier){ state.tpl = null; state.vals = {}; buildFields(); }
+  state.edited = false;
+  renderPreview();
+}
 function setSignoff(mode){
   state.signoff = mode;
   var p = $('#soPersonal'), t = $('#soTeam');
@@ -916,7 +971,11 @@ function buildTemplates(){
   bar.appendChild(seg);
   host.appendChild(bar);
 
-  var list = TEMPLATES.filter(function(t){ return t.group === state.cat && (t.site === 'any' || t.site === state.site); });
+  var list = TEMPLATES.filter(function(t){
+    return t.group === state.cat &&
+           (t.site === 'any' || t.site === state.site) &&
+           (!t.tier || t.tier === state.tier);
+  });
   var row = document.createElement('div'); row.className = 'tgroup';
   list.forEach(function(t){
     var b = document.createElement('button'); b.className = 'tpl';
@@ -1075,6 +1134,7 @@ function hydrate(cardName, desc){
   state.cardName = cardName || '';
   state.desc = desc || '';
   state.parsed = parseDesc(desc);
+  setTier(state.parsed.tier || 'internal');
   setSite(state.parsed.site || 'unknown', !!state.parsed.site);
   buildClientStrip(); renderPreview();
 }
@@ -1264,6 +1324,8 @@ function initFullApp(){
   $('#segDavis').onclick = function(){ setSite('davis', false); };
   $('#segAS').onclick = function(){ setSite('as', false); };
   $('#segUnk').onclick = function(){ setSite('unknown', false); };
+  $('#tierInt').onclick = function(){ setTier('internal'); };
+  $('#tierExt').onclick = function(){ setTier('external'); };
   $('#soPersonal').onclick = function(){ setSignoff('personal'); };
   $('#soTeam').onclick = function(){ setSignoff('team'); };
   $('#pv').addEventListener('input', function(){ state.edited = true; });
@@ -1445,13 +1507,14 @@ function initSummary(){
     while((m = re.exec(desc || ''))){
       var e = m[0], k = e.toLowerCase();
       if(seen[k]) continue; seen[k] = true; nSec++;
-      row.appendChild(copyBtn('Secondary contact email' + (nSec > 1 ? (' ' + nSec) : ''), e, e));
+      row.appendChild(copyBtn('Email ' + nSec, e, e));
     }
     if(!row.childNodes.length){
       var nn = document.createElement('span'); nn.className = 'none';
       nn.textContent = 'No snippet or email addresses found on this card.';
       row.appendChild(nn);
     }
+    state.tier = p.tier || 'internal';
     setSvSite(p.site || 'unknown');
     resize();
   }
