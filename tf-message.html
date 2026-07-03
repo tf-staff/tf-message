@@ -42,6 +42,7 @@
   [data-color-mode="dark"] .seg button[aria-pressed="true"]{color:#1d2125}
   .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:1px}
   .autochip{font-size:10.5px;color:var(--dimmer);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+  .sofflbl{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
 
   /* client strip (click any item to copy it) */
   .client{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:2px 0 10px;margin-bottom:8px;border-bottom:1px solid var(--line)}
@@ -136,6 +137,16 @@
   .tok{font-size:10.5px;color:var(--dim);background:var(--subtle);border-radius:5px;padding:2px 7px;cursor:pointer}
   .tok b{color:var(--blue);font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600}
   .tok:hover{background:var(--subtle-h)}
+  .lnkhead{display:flex;align-items:baseline;gap:10px;margin-top:14px;padding-top:10px;border-top:1px solid var(--line)}
+  .lnkhead .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--head);font-weight:800}
+  .lnkhead .sub{font-size:11px;color:var(--dimmer)}
+  .lnkrow{display:flex;gap:6px;align-items:center;margin-top:6px}
+  .lnkrow input{font:inherit;font-size:12px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;min-width:0}
+  .lnkrow input:focus{outline:none;border-color:var(--blue)}
+  .lnkrow .llab{flex:0 0 200px}
+  .lnkrow .lurl{flex:1 1 auto}
+  .lnkrow .lurl.unset{border-color:rgba(226,178,3,.5)}
+  .lnkrow .btn{padding:4px 10px;font-size:11px}
   .budget{font-size:11px;color:var(--dimmer);font-variant-numeric:tabular-nums}
   .budget.hot{color:var(--amber);font-weight:700}
   .budget.over{color:var(--red);font-weight:700}
@@ -146,16 +157,23 @@
   .actions .spacer{flex:1 1 auto}
 
   /* summary (card-back compact panel) */
-  #summaryView{display:none;background:var(--panel);border-radius:8px;padding:10px 12px;max-width:100%}
+  #summaryView{display:none;background:var(--panel);border-radius:8px;padding:11px 13px;max-width:100%}
   body.tp-summary #summaryView{display:block}
   body.tp-summary #app{display:none}
-  #summaryView .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  #summaryView .svbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
-  #summaryView .svbtns .btn{font-size:11.5px;padding:4px 11px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #summaryView .svrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  #summaryView .svrow + .svrow{margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+  #summaryView .plbl{flex:0 0 58px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+  #summaryView .svbtns{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 auto;min-width:0}
+  #summaryView .svbtns .cbtn{appearance:none;cursor:pointer;border:1px solid var(--line);background:var(--subtle);
+    border-radius:8px;padding:4px 11px 5px;display:flex;flex-direction:column;align-items:flex-start;gap:0;
+    max-width:230px;min-width:0;text-align:left}
+  #summaryView .svbtns .cbtn:hover{background:var(--subtle-h)}
+  #summaryView .svbtns .cbtn .bl{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--dimmer)}
+  #summaryView .svbtns .cbtn .bv{font-size:11.5px;font-weight:600;color:var(--text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #summaryView .svbtns .cbtn.ok{border-color:rgba(75,206,151,.7);outline:1px solid rgba(75,206,151,.5)}
+  #summaryView .svbtns .cbtn.ok .bl{color:var(--green)}
   #summaryView .svbtns .none{font-size:11px;color:var(--dimmer);font-style:italic;align-self:center}
-  #summaryView .svpick{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
-  #summaryView .plbl{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
-  #summaryView .svlockers{display:flex;gap:5px;flex-wrap:wrap}
+  #summaryView .svlockers{display:flex;gap:5px;flex-wrap:wrap;flex:1 1 auto}
   #summaryView .lk{width:44px;padding:4px 0 3px}
   #summaryView .lk .n{font-size:13px}
   #summaryView .lk .c{font-size:9px}
@@ -168,16 +186,26 @@
 <body>
 
 <div id="summaryView">
-  <div class="row">
+  <div class="svrow">
+    <span class="plbl">Location</span>
     <div class="seg" role="group" aria-label="Location">
       <button id="svDavis" aria-pressed="false">Davis</button>
       <button id="svAS" aria-pressed="false">Aggie Sq</button>
+      <button id="svUnk" aria-pressed="false">Unknown</button>
     </div>
-    <span style="margin-left:auto;font-size:10px;color:var(--dimmer)" id="svVer"></span>
+    <span style="flex:1 1 auto"></span>
+    <div class="seg" role="group" aria-label="Sign-off">
+      <button id="svSoP" aria-pressed="false">Personal</button>
+      <button id="svSoT" aria-pressed="true">Team</button>
+    </div>
+    <span style="font-size:10px;color:var(--dimmer)" id="svVer"></span>
   </div>
-  <div class="svbtns" id="svCopyRow"></div>
-  <div class="svpick">
-    <span class="plbl">Ready for pickup —</span>
+  <div class="svrow">
+    <span class="plbl">Copy</span>
+    <div class="svbtns" id="svCopyRow"></div>
+  </div>
+  <div class="svrow">
+    <span class="plbl">Pickup</span>
     <div class="svlockers" id="svPick"></div>
   </div>
 </div>
@@ -185,7 +213,7 @@
 <div class="panel" id="app">
   <div class="head">
     <span class="title">✉ TF-Message</span><span class="ver" id="verBadge"></span>
-    <button class="btn" id="gearBtn" title="Edit message wording" style="margin-left:auto">⚙ Settings</button>
+    <button class="btn" id="gearBtn" title="Edit the selected message" style="margin-left:auto">✎ Edit</button>
   </div>
 
   <div class="client" id="clientStrip"></div>
@@ -194,8 +222,15 @@
     <div class="seg" role="group" aria-label="Location">
       <button id="segDavis" aria-pressed="false">Davis</button>
       <button id="segAS" aria-pressed="false">Aggie Square</button>
+      <button id="segUnk" aria-pressed="false">Unknown</button>
     </div>
     <span class="autochip" id="autoChip" hidden>auto-detected from card</span>
+    <span style="flex:1 1 auto"></span>
+    <span class="sofflbl">Sign-off</span>
+    <div class="seg" role="group" aria-label="Sign-off">
+      <button id="soPersonal" aria-pressed="false">Personal</button>
+      <button id="soTeam" aria-pressed="true">Team</button>
+    </div>
   </div>
 
   <div id="tplArea"></div>
@@ -216,14 +251,19 @@
   </div>
 
   <div class="setwrap" id="settings" hidden>
-    <div class="sethead"><span class="lbl">Message wording</span>
+    <div class="sethead"><span class="lbl">Edit message</span>
       <span class="sub">changes save to this board and apply on every card</span>
       <span class="modchip" id="modChip" hidden>modified</span></div>
     <div class="fields" style="padding:8px 0 6px">
       <div class="fld"><label for="setTpl">Template</label><select id="setTpl"></select></div>
+      <div class="fld"><label for="setName">Button name</label><input id="setName" type="text" maxlength="40"></div>
     </div>
     <textarea id="setText" spellcheck="true" aria-label="Template text"></textarea>
     <div class="toklegend" id="tokLegend"></div>
+    <div class="lnkhead"><span class="lbl">Hyperlinks</span>
+      <span class="sub">used by the {{link:…}} markers in messages · saved board-wide</span></div>
+    <div id="lnkRows"></div>
+    <button class="btn" id="lnkAdd" style="margin-top:6px">+ Add link</button>
     <div class="actions" style="padding-left:0;padding-right:0">
       <button class="btn primary" id="setSave">Save for this board</button>
       <button class="btn" id="setRevert">Revert to default</button>
@@ -248,7 +288,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.9';
+var VERSION = '1.12';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -348,7 +388,8 @@ var SCOPE_FIELD = {k:'scope', label:'Scope', type:'seg',
   options:[['complete','Entire project'],['partial','Partial delivery']], def:'complete'};
 
 var TOKEN_HELP = {
-  greeting:'\u201cHi <first name>,\u201d or \u201cHello,\u201d', signoff:'standard closing lines',
+  greeting:'\u201cHi <first name>,\u201d or \u201cHello,\u201d',
+  signoff:'closing lines \u2014 follows the Personal/Team sign-off slider',
   ready:'pickup opener \u2014 adapts to the Entire/Partial switch',
   partialNote:'extra sentence shown only for partial deliveries',
   locker:'selected locker number', code:'that locker\u2019s keypad code',
@@ -366,13 +407,31 @@ var TOKEN_HELP = {
   sinceClause:'\u201c since \u2026\u201d or blank', holdLine:'hold-until / pick-up-soon sentence',
   dates:'closed dates', resumeClause:'\u201c on \u2026\u201d or blank',
   snippetText:'the card\u2019s purchasing snippet (or one rebuilt from client + account)',
+  askLine:'the time proposal \u2014 phrasing follows the Exact/Range slider',
+  platformLine:'meeting-format sentence \u2014 follows the platform slider (address for in-person, client\u2019s phone for calls)',
   quoteBlock:'the pasted quote summary, kept formatted exactly as pasted'
 };
+function platformLine(platform, c){
+  if(platform === 'inperson'){
+    if(state.site === 'unknown'){
+      return 'We can meet at either our Davis facility (Room 1703 GBSF) or at Aggie Square in Sacramento (Room 1730) \u2014 let us know which is more convenient.';
+    }
+    return 'We\u2019d meet at our ' + (state.site === 'as'
+      ? ('Aggie Square facility (Room 1730, ' + F.asAddress + ')')
+      : ('Davis facility (Room 1703 GBSF, ' + F.davisAddress + ')')) + '.';
+  }
+  if(platform === 'zoom') return 'We\u2019ll set it up as a Zoom meeting and send you a link.';
+  if(platform === 'phone') return 'We\u2019ll give you a call' + (c.phone ? (' at ' + c.phone) : '') + '.';
+  return 'We\u2019re happy to meet in person, over Zoom, or by phone \u2014 whatever\u2019s easiest for you.';
+}
 function baseTokens(v, c){
   var partial = (v.scope === 'partial');
   return {
     greeting: c.firstName ? ('Hi ' + c.firstName + ',') : 'Hello,',
-    signoff: 'Please let us know if you have any questions.\n\nBest regards,\nThe ' + F.orgName + ' Team',
+    signoff: 'Please let us know if you have any questions.\n\nBest regards,\n' +
+      (state.signoff === 'personal'
+        ? ((state.memberFirst ? (state.memberFirst + '\n') : '') + F.orgName)
+        : ('The ' + F.orgName + ' Team')),
     ready: partial ? 'Good news \u2014 part of your project is ready for pickup'
                    : 'Good news \u2014 your project is complete and ready for pickup',
     partialNote: partial ? 'The remainder is still in progress, and we\u2019ll send another notice as soon as it\u2019s complete.' : '',
@@ -434,6 +493,13 @@ var TEMPLATES = [
 'Please reply to this email once you\u2019ve dropped off so we know to collect it. During business hours you\u2019re also welcome to bring items directly to Room 1703 \u2014 call us at {davisPhone} from the south entry doors and we\u2019ll meet you.\n\n' +
 'Photos and a map of the box location: {{link:davisPickupGuide|Davis box guide}}\n\n' +
 '{signoff}' },
+  { id:'ask_location', group:'Pick-up/Drop-off', site:'unknown', title:'Ask collection preference',
+    fields:[],
+    text:
+'{greeting}\n\nYour project{projectRef} is coming together, and we\u2019d like to confirm where you\u2019d prefer to collect it. We have two locations:\n' +
+'- Davis: Room 1703 (GBSF), {davisAddress}\n' +
+'- Sacramento: Room 1730, Aggie Square Building, {asAddress}\n\n' +
+'Just reply with whichever is more convenient, and we\u2019ll send pickup instructions for that site when it\u2019s ready.\n\n{signoff}' },
   /* -------- Directions -------- */
   { id:'dir_davis', group:'Directions', site:'davis', title:'Visiting us',
     fields:[],
@@ -452,6 +518,38 @@ var TEMPLATES = [
 'If you\u2019re coming from Davis, the Causeway Connection is a zero-emission bus that runs between Davis and the Sacramento campus.\n\n' +
 'An annotated map with parking and entrances: {{link:asDirections|Find Us \u2014 Aggie Square}}\n\n' +
 '{signoff}' },
+  { id:'dir_both', group:'Directions', site:'unknown', title:'Our locations',
+    fields:[],
+    text:
+'{greeting}\n\nWe operate from two locations:\n' +
+'- Davis: Room 1703 (GBSF), {davisAddress} \u2014 directions: {{link:davisDirections|Find Us \u2014 Davis}}\n' +
+'- Sacramento: Room 1730, Aggie Square Building, {asAddress} \u2014 directions: {{link:asDirections|Find Us \u2014 Aggie Square}}\n\n' +
+'Let us know which works better for you, and we\u2019re happy to share parking and arrival details.\n\n{signoff}' },
+  /* -------- Appointment -------- */
+  { id:'appt_propose', group:'Appointment', site:'any', title:'Propose a time',
+    fields:[{k:'timeMode',label:'Time',type:'seg',def:'exact',
+             options:[['exact','Exact time'],['range','Time range']]},
+            {k:'when',label:'Proposed time / window',type:'text',ph:'e.g. Tuesday 7/8 at 2:00 PM \u2014 or \u2014 Tuesday 7/8, 1:00\u20134:00 PM'},
+            {k:'platform',label:'Platform',type:'seg',def:'choice',
+             options:[['inperson','In person'],['zoom','Zoom'],['phone','Phone'],['choice','Client choice']]}],
+    tokens:function(v,c){
+      var when = v.when || '{{miss:proposed time}}';
+      return {
+        askLine: (v.timeMode === 'range')
+          ? ('We\u2019re available ' + when + ' \u2014 would a time in that window work for you? Let us know what fits best.')
+          : ('Would ' + when + ' work for you?'),
+        platformLine: platformLine(v.platform, c)
+      };
+    },
+    text:
+'{greeting}\n\nWe\u2019d like to set up a time to discuss your project{projectRef}. {askLine} {platformLine}\n\n' +
+'If that doesn\u2019t work, just reply with a few windows that do and we\u2019ll make one fit.\n\n{signoff}' },
+  { id:'appt_request', group:'Appointment', site:'any', title:'Request availability',
+    fields:[{k:'platform',label:'Platform',type:'seg',def:'choice',
+             options:[['inperson','In person'],['zoom','Zoom'],['phone','Phone'],['choice','Client choice']]}],
+    tokens:function(v,c){ return { platformLine: platformLine(v.platform, c) }; },
+    text:
+'{greeting}\n\nWe\u2019d like to set up a time to discuss your project{projectRef}. Could you reply with a few dates and times that work for you over the next week or so? We\u2019ll confirm the best fit. {platformLine}\n\n{signoff}' },
   /* -------- Job status -------- */
   { id:'received', group:'Job status', site:'any', title:'Request received',
     fields:[{k:'eta',label:'Est. turnaround',type:'text',ph:'e.g. 5\u20137 business days'}],
@@ -559,8 +657,32 @@ var TEMPLATES = [
 ];
 
 /* ---------------------- override storage + rendering ------------------ */
-var OVR = {};   // {tplId: overridden text} — board-wide via Trello pluginData
-function effectiveText(t){ return (typeof OVR[t.id] === 'string') ? OVR[t.id] : t.text; }
+var OVR = {};          // {tplId: text-string (legacy) | {t:text, n:name}} — board-wide
+var LINKS_STORE = {};  // {key:{label,url}} — board-wide edits/additions to hyperlinks
+var DEFAULT_LINK_LABELS = {
+  asPickupGuide:'Aggie Square pickup guide', asDropoffGuide:'Aggie Square drop-off guide',
+  davisPickupGuide:'Davis pickup guide', davisDirections:'Find Us — Davis',
+  asDirections:'Find Us — Aggie Square', feedbackForm:'Quick survey', intakeForm:'Project intake form'
+};
+function effectiveText(t){
+  var v = OVR[t.id];
+  if(typeof v === 'string') return v;
+  if(v && typeof v.t === 'string') return v.t;
+  return t.text;
+}
+function effectiveTitle(t){
+  var v = OVR[t.id];
+  if(v && typeof v === 'object' && v.n) return v.n;
+  return t.title;
+}
+function getLinkUrl(key){
+  if(LINKS_STORE[key] && LINKS_STORE[key].url) return LINKS_STORE[key].url;
+  return LNK[key] || '';
+}
+function getLinkLabel(key){
+  if(LINKS_STORE[key] && LINKS_STORE[key].label) return LINKS_STORE[key].label;
+  return DEFAULT_LINK_LABELS[key] || key;
+}
 function expandText(t){
   var map = baseTokens(state.vals, state.parsed);
   if(t.tokens){ var extra = t.tokens(state.vals, state.parsed); for(var k in extra) map[k] = extra[k]; }
@@ -597,6 +719,8 @@ var state = {
   desc: '',
   parsed: parseDesc(''),
   cat: 'Pick-up/Drop-off',  // selected category (segmented)
+  signoff: 'team',          // 'team' | 'personal' (per-member preference)
+  memberFirst: '',          // logged-in Trello member's first name
   tpl: null,                // selected template id
   vals: {},                 // field values for current template
   edited: false             // preview manually edited (suppress auto-rerender)
@@ -605,10 +729,10 @@ var state = {
 /* ---------------------- render helpers ------------------------------ */
 function tokensToHtml(s){
   return esc(s)
-    .replace(/\{\{link:([A-Za-z]+)\|([^}]+)\}\}/g, function(_, key, label){
-      var url = LNK[key];
+    .replace(/\{\{link:([A-Za-z0-9_]+)\|([^}]+)\}\}/g, function(_, key, label){
+      var url = getLinkUrl(key);
       return url ? ('<a href="' + esc(url) + '">' + esc(label) + '</a>')
-                 : ('<span class="miss">[' + esc(label) + ' — Box link not set]</span>');
+                 : ('<span class="miss">[' + esc(label) + ' — link not set]</span>');
     })
     .replace(/\{\{miss:([^}]+)\}\}/g, function(_, label){
       return '<span class="miss">[' + esc(label) + ']</span>';
@@ -617,8 +741,8 @@ function tokensToHtml(s){
 }
 function tokensToText(s){
   return String(s)
-    .replace(/\{\{link:([A-Za-z]+)\|([^}]+)\}\}/g, function(_, key, label){
-      var url = LNK[key];
+    .replace(/\{\{link:([A-Za-z0-9_]+)\|([^}]+)\}\}/g, function(_, key, label){
+      var url = getLinkUrl(key);
       return url ? (label + ': ' + url) : ('[' + label + ' — link TBD]');
     })
     .replace(/\{\{miss:([^}]+)\}\}/g, function(_, label){ return '[' + label + ']'; });
@@ -710,16 +834,31 @@ function copyPlainFallback(text, done){
 var _t = null;
 
 /* --------------------------- UI build ------------------------------- */
+function setSignoff(mode){
+  state.signoff = mode;
+  var p = $('#soPersonal'), t = $('#soTeam');
+  if(p) p.setAttribute('aria-pressed', mode === 'personal' ? 'true' : 'false');
+  if(t) t.setAttribute('aria-pressed', mode === 'team' ? 'true' : 'false');
+  if(_t){
+    try{ _t.set('board','private','signoff', mode); }
+    catch(e){ try{ new BroadcastChannel('tf-msg').postMessage({type:'saveSignoff', data:mode}); }catch(e2){} }
+  }
+  state.edited = false;
+  if($('#pv')) renderPreview();
+}
 function setSite(site, auto){
   state.site = site;
   state.siteAuto = !!auto;
   $('#segDavis').setAttribute('aria-pressed', site==='davis' ? 'true' : 'false');
   $('#segAS').setAttribute('aria-pressed', site==='as' ? 'true' : 'false');
+  if($('#segUnk')) $('#segUnk').setAttribute('aria-pressed', site==='unknown' ? 'true' : 'false');
   $('#autoChip').hidden = !auto;
   buildTemplates();
-  // if current template doesn't fit new site, clear it
+  // if current template doesn't fit new site, clear it; either way re-render
   var t = TEMPLATES.find(function(x){ return x.id === state.tpl; });
-  if(t && t.site !== 'any' && t.site !== site){ state.tpl = null; state.vals = {}; buildFields(); renderPreview(); }
+  if(t && t.site !== 'any' && t.site !== site){ state.tpl = null; state.vals = {}; buildFields(); }
+  state.edited = false;
+  renderPreview();
 }
 function buildClientStrip(){
   var p = state.parsed, host = $('#clientStrip');
@@ -782,7 +921,7 @@ function buildTemplates(){
   list.forEach(function(t){
     var b = document.createElement('button'); b.className = 'tpl';
     b.setAttribute('aria-pressed', state.tpl === t.id ? 'true' : 'false');
-    b.textContent = t.title;
+    b.textContent = effectiveTitle(t);
     b.onclick = function(){ selectTemplate(t.id); };
     row.appendChild(b);
   });
@@ -923,7 +1062,7 @@ function renderPreview(){
     var byLink = 0, byField = 0;
     missing.forEach(function(m){ if(/Box link not set/.test(m.textContent)) byLink++; else byField++; });
     if(byField) addWarn(byField + ' field' + (byField>1?'s':'') + ' still need' + (byField>1?'':'s') + ' a value — highlighted in the preview.');
-    if(byLink) addWarn('A Box link is not configured yet (see CONFIG.LINKS at the top of this file). The copied message will say \u201clink TBD\u201d.');
+    if(byLink) addWarn('A hyperlink is not set yet \u2014 add its URL under \u270e Edit \u2192 Hyperlinks. The copied message will say \u201clink TBD\u201d.');
   }
 }
 function addWarn(txt){
@@ -936,8 +1075,7 @@ function hydrate(cardName, desc){
   state.cardName = cardName || '';
   state.desc = desc || '';
   state.parsed = parseDesc(desc);
-  if(state.parsed.site) setSite(state.parsed.site, true);
-  else setSite(state.site, false);
+  setSite(state.parsed.site || 'unknown', !!state.parsed.site);
   buildClientStrip(); renderPreview();
 }
 /* ---------------------- settings (wording editor) -------------------- */
@@ -959,7 +1097,7 @@ function buildSetOptions(){
     var og = document.createElement('optgroup'); og.label = g;
     TEMPLATES.filter(function(t){ return t.group === g; }).forEach(function(t){
       var o = document.createElement('option'); o.value = t.id;
-      o.textContent = t.title + ' · ' + siteLabel(t.site) + ((t.id in OVR) ? ' • modified' : '');
+      o.textContent = effectiveTitle(t) + ' · ' + siteLabel(t.site) + ((t.id in OVR) ? ' • modified' : '');
       og.appendChild(o);
     });
     sel.appendChild(og);
@@ -970,7 +1108,9 @@ function loadSetTpl(id){
   SET.cur = t.id;
   $('#setTpl').value = t.id;
   $('#setText').value = effectiveText(t);
+  $('#setName').value = effectiveTitle(t);
   $('#modChip').hidden = !(t.id in OVR);
+  renderLinkRows();
   // token legend: tokens present in the *default* text, plus link markers note
   var host = $('#tokLegend'); host.innerHTML = '';
   var seen = {}, re = /\{([A-Za-z]\w*)\}/g, m;
@@ -990,6 +1130,60 @@ function loadSetTpl(id){
   note.innerHTML = '<b>{{link:…}}</b> keep these markers — they become the configured Box links';
   host.appendChild(note);
   updateBudget();
+}
+function slugKey(label){
+  var base = String(label||'link').replace(/[^A-Za-z0-9]+/g,' ').trim().split(/\s+/)
+    .map(function(w,i){ w = w.toLowerCase(); return i ? (w.charAt(0).toUpperCase()+w.slice(1)) : w; }).join('') || 'link';
+  var k = base, n = 2;
+  while((k in LNK) || (k in LINKS_STORE && LINKS_STORE[k].__taken)) { k = base + n; n++; }
+  return k;
+}
+function allLinkKeys(){
+  var keys = Object.keys(LNK).slice();
+  Object.keys(LINKS_STORE).forEach(function(k){ if(keys.indexOf(k) === -1) keys.push(k); });
+  return keys;
+}
+function setLinkDraft(key, field, val){
+  var cur = LINKS_STORE[key] || {};
+  cur[field] = val;
+  // drop entries that match the built-in defaults exactly
+  var defUrl = LNK[key] || '', defLab = DEFAULT_LINK_LABELS[key] || key;
+  if((cur.url || '') === defUrl && (cur.label || defLab) === defLab && (key in LNK)) delete LINKS_STORE[key];
+  else LINKS_STORE[key] = cur;
+}
+function renderLinkRows(){
+  var host = $('#lnkRows'); if(!host) return;
+  host.innerHTML = '';
+  allLinkKeys().forEach(function(key){
+    var row = document.createElement('div'); row.className = 'lnkrow';
+    var lab = document.createElement('input'); lab.className = 'llab'; lab.type = 'text';
+    lab.placeholder = 'Label'; lab.value = getLinkLabel(key); lab.title = 'Link label ({{link:' + key + '|…}})';
+    lab.oninput = function(){ setLinkDraft(key, 'label', lab.value); };
+    var url = document.createElement('input'); url.className = 'lurl'; url.type = 'text';
+    url.placeholder = 'https:// … (Box share link)'; url.value = getLinkUrl(key);
+    url.classList.toggle('unset', !getLinkUrl(key));
+    url.oninput = function(){ setLinkDraft(key, 'url', url.value.trim()); url.classList.toggle('unset', !url.value.trim()); };
+    var ins = document.createElement('button'); ins.type = 'button'; ins.className = 'btn'; ins.textContent = 'Insert';
+    ins.title = 'Insert this link into the message text at the cursor';
+    ins.onclick = function(){
+      var ta = $('#setText'), pos = ta.selectionStart || ta.value.length;
+      var marker = '{{link:' + key + '|' + (lab.value || getLinkLabel(key)) + '}}';
+      ta.value = ta.value.slice(0, pos) + marker + ta.value.slice(ta.selectionEnd || pos);
+      ta.focus(); ta.selectionStart = ta.selectionEnd = pos + marker.length;
+    };
+    row.appendChild(lab); row.appendChild(url); row.appendChild(ins);
+    host.appendChild(row);
+  });
+}
+function persistLinks(){
+  if(!_t) return;
+  try{
+    var pr = _t.set('board','shared','msgLinks', LINKS_STORE);
+    if(pr && pr.then){ pr.then(null, function(){ relayLinks(); }); }
+  }catch(e){ relayLinks(); }
+}
+function relayLinks(){
+  try{ new BroadcastChannel('tf-msg').postMessage({ type:'saveLinks', data: LINKS_STORE }); }catch(e){}
 }
 function persistOverrides(btn){
   var done = function(ok){ if(btn) flashBtn(btn, ok); };
@@ -1022,13 +1216,24 @@ function initSettings(){
     if(!el.hidden){ buildSetOptions(); loadSetTpl(state.tpl || TEMPLATES[0].id); try{ el.scrollIntoView({block:'nearest'}); }catch(e){} }
   };
   $('#setTpl').onchange = function(){ setWarn(''); loadSetTpl(this.value); };
+  $('#lnkAdd').onclick = function(){
+    var label = (prompt('Label for the new link:') || '').trim();
+    if(!label) return;
+    var key = slugKey(label);
+    LINKS_STORE[key] = { label: label, url: '' };
+    renderLinkRows();
+  };
   $('#setSave').onclick = function(){
     var t = TEMPLATES.find(function(x){ return x.id === SET.cur; }); if(!t) return;
     var txt = $('#setText').value;
+    var name = $('#setName').value.trim();
     setWarn('');
     var prev = OVR[t.id];
-    if(txt === t.text){ delete OVR[t.id]; }
-    else { OVR[t.id] = txt; }
+    var entry = {};
+    if(txt !== t.text) entry.t = txt;
+    if(name && name !== t.title) entry.n = name;
+    if(!entry.t && !entry.n){ delete OVR[t.id]; }
+    else { OVR[t.id] = entry; }
     if(ovrSize() > OVR_LIMIT){
       // roll back and refuse — Trello would silently truncate/reject
       if(prev === undefined) delete OVR[t.id]; else OVR[t.id] = prev;
@@ -1037,10 +1242,11 @@ function initSettings(){
       return;
     }
     persistOverrides($('#setSave'));
+    persistLinks();
     $('#modChip').hidden = !(t.id in OVR);
     buildSetOptions(); $('#setTpl').value = t.id;
     updateBudget();
-    state.edited = false; renderPreview();
+    state.edited = false; buildTemplates(); renderPreview();
   };
   $('#setRevert').onclick = function(){
     var t = TEMPLATES.find(function(x){ return x.id === SET.cur; }); if(!t) return;
@@ -1048,7 +1254,7 @@ function initSettings(){
     persistOverrides($('#setRevert'));
     loadSetTpl(t.id); buildSetOptions(); $('#setTpl').value = t.id;
     setWarn('');
-    state.edited = false; renderPreview();
+    state.edited = false; buildTemplates(); renderPreview();
   };
   $('#setDone').onclick = function(){ $('#settings').hidden = true; };
 }
@@ -1057,6 +1263,9 @@ function initFullApp(){
   $('#verBadge').textContent = 'v' + VERSION;
   $('#segDavis').onclick = function(){ setSite('davis', false); };
   $('#segAS').onclick = function(){ setSite('as', false); };
+  $('#segUnk').onclick = function(){ setSite('unknown', false); };
+  $('#soPersonal').onclick = function(){ setSignoff('personal'); };
+  $('#soTeam').onclick = function(){ setSignoff('team'); };
   $('#pv').addEventListener('input', function(){ state.edited = true; });
   $('#resetBtn').onclick = function(){ state.edited = false; renderPreview(); };
   $('#copyRich').onclick = function(){ var p = previewToPayload(); copyRich(p.html, p.text, $('#copyRich')); };
@@ -1082,8 +1291,8 @@ function initStandalone(){
 var TRELLO_ICON = 'data:image/svg+xml,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>');
 
-function buildDataParam(name, desc, ovr){
-  try{ return encodeURIComponent(JSON.stringify({ n:name||'', d:desc||'', o:ovr||{} })); }
+function buildDataParam(name, desc, ovr, links, member, signoff){
+  try{ return encodeURIComponent(JSON.stringify({ n:name||'', d:desc||'', o:ovr||{}, l:links||{}, m:member||'', so:signoff||'' })); }
   catch(e){ return ''; }
 }
 var _lastCardT = null;
@@ -1092,8 +1301,10 @@ function initConnector(){
     var bc = new BroadcastChannel('tf-msg');
     bc.onmessage = function(m){
       var msg = m && m.data;
-      if(!msg || msg.type !== 'saveTpl' || !_lastCardT) return;
-      try{ _lastCardT.set('board','shared','msgTpl', msg.data); }catch(e){}
+      if(!msg || !_lastCardT) return;
+      if(msg.type === 'saveTpl'){ try{ _lastCardT.set('board','shared','msgTpl', msg.data); }catch(e){} }
+      if(msg.type === 'saveLinks'){ try{ _lastCardT.set('board','shared','msgLinks', msg.data); }catch(e){} }
+      if(msg.type === 'saveSignoff'){ try{ _lastCardT.set('board','private','signoff', msg.data); }catch(e){} }
     };
   }catch(e){}
   window.TrelloPowerUp.initialize({
@@ -1101,12 +1312,17 @@ function initConnector(){
       _lastCardT = t;
       var reads = Promise.all([
         t.card('name','desc').catch(function(){ return {name:'',desc:''}; }),
-        t.get('board','shared','msgTpl').catch(function(){ return {}; })
+        t.get('board','shared','msgTpl').catch(function(){ return {}; }),
+        t.get('board','shared','msgLinks').catch(function(){ return {}; }),
+        t.member('fullName').catch(function(){ return {}; }),
+        t.get('board','private','signoff').catch(function(){ return ''; })
       ]);
-      var timeout = new Promise(function(res){ setTimeout(function(){ res([{name:'',desc:''},{}]); }, 1800); });
+      var timeout = new Promise(function(res){ setTimeout(function(){ res([{name:'',desc:''},{},{},{},'' ]); }, 1800); });
       return Promise.race([reads, timeout]).then(function(r){
-        var card = r[0] || {}, ovr = r[1] || {};
-        var dstr = buildDataParam(card.name, card.desc, ovr);
+        var card = r[0] || {}, ovr = r[1] || {}, links = r[2] || {};
+        var first = ((r[3] && r[3].fullName) || '').split(/\s+/)[0] || '';
+        var soPref = (r[4] === 'personal' || r[4] === 'team') ? r[4] : '';
+        var dstr = buildDataParam(card.name, card.desc, ovr, links, first, soPref);
         var sUrl = SELF + '?view=summary&cb=' + Date.now() + '&d=' + dstr;
         var eUrl = SELF + '?view=editor&cb=' + Date.now() + '&d=' + dstr;
         try{ if(t.signUrl){ sUrl = t.signUrl(sUrl); } }catch(e){}
@@ -1149,9 +1365,11 @@ function initSummary(){
   function quickCopyPickup(lockerN, btn){
     /* Entire-project 'Ready for pickup' via the real template pipeline,
        so board wording overrides apply here too. */
+    state.site = site;
     state.vals = { scope:'complete' };
     if(site === 'as') state.vals.locker = String(lockerN);
-    var tpl = TEMPLATES.find(function(x){ return x.id === (site === 'as' ? 'pickup_as' : 'pickup_davis'); });
+    var tplId = (site === 'as') ? 'pickup_as' : (site === 'davis' ? 'pickup_davis' : 'ask_location');
+    var tpl = TEMPLATES.find(function(x){ return x.id === tplId; });
     var blocks = textToBlocks(expandText(tpl));
     var html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45">' +
                blocksToHtml(blocks).replace(/<span class="miss">([^<]*)<\/span>/g, '$1') + '</div>';
@@ -1169,11 +1387,17 @@ function initSummary(){
         b.onclick = function(){ quickCopyPickup(n, b); };
         host.appendChild(b);
       })(i);
-    } else {
+    } else if(site === 'davis'){
       var b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
       b.textContent = 'Copy pickup notice (TEAM box)';
       b.onclick = function(){ quickCopyPickup(null, b); };
       host.appendChild(b);
+    } else {
+      var b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'btn';
+      b2.textContent = 'Copy \u201cwhich location?\u201d note';
+      b2.title = 'Asks the client where they\u2019d like to collect their project';
+      b2.onclick = function(){ quickCopyPickup(null, b2); };
+      host.appendChild(b2);
     }
     resize();
   }
@@ -1181,14 +1405,25 @@ function initSummary(){
     site = x;
     $('#svDavis').setAttribute('aria-pressed', x === 'davis' ? 'true' : 'false');
     $('#svAS').setAttribute('aria-pressed', x === 'as' ? 'true' : 'false');
+    $('#svUnk').setAttribute('aria-pressed', x === 'unknown' ? 'true' : 'false');
     renderPickRow();
+  }
+  function setSvSignoff(mode){
+    state.signoff = mode;
+    $('#svSoP').setAttribute('aria-pressed', mode === 'personal' ? 'true' : 'false');
+    $('#svSoT').setAttribute('aria-pressed', mode === 'team' ? 'true' : 'false');
+    try{ t.set('board','private','signoff', mode); }catch(e){}
   }
   $('#svDavis').onclick = function(){ setSvSite('davis'); };
   $('#svAS').onclick = function(){ setSvSite('as'); };
+  $('#svUnk').onclick = function(){ setSvSite('unknown'); };
+  $('#svSoP').onclick = function(){ setSvSignoff('personal'); };
+  $('#svSoT').onclick = function(){ setSvSignoff('team'); };
 
-  function copyBtn(label, val){
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
-    b.textContent = label; b.title = 'Copy: ' + val;
+  function copyBtn(label, display, val){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'cbtn';
+    b.title = 'Copy: ' + val;
+    b.innerHTML = '<span class="bl">' + esc(label) + '</span><span class="bv">' + esc(display) + '</span>';
     b.onclick = function(){ copyPlain(val, null); flash(b); };
     return b;
   }
@@ -1200,28 +1435,32 @@ function initSummary(){
     var row = $('#svCopyRow'); row.innerHTML = '';
     // purchasing snippet
     if(p.snippet || p.acct){
-      row.appendChild(copyBtn('Purchasing snippet', currentSnippet()));
+      var sv = currentSnippet();
+      row.appendChild(copyBtn('Purchasing snippet', sv, sv));
     }
     // client email first, then every other email in the description, deduped
-    var seen = {};
-    if(p.email){ seen[p.email.toLowerCase()] = true; row.appendChild(copyBtn(p.email, p.email)); }
+    var seen = {}, nSec = 0;
+    if(p.email){ seen[p.email.toLowerCase()] = true; row.appendChild(copyBtn('Client email', p.email, p.email)); }
     var re = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, m;
     while((m = re.exec(desc || ''))){
       var e = m[0], k = e.toLowerCase();
-      if(seen[k]) continue; seen[k] = true;
-      row.appendChild(copyBtn(e, e));
+      if(seen[k]) continue; seen[k] = true; nSec++;
+      row.appendChild(copyBtn('Secondary contact email' + (nSec > 1 ? (' ' + nSec) : ''), e, e));
     }
     if(!row.childNodes.length){
       var nn = document.createElement('span'); nn.className = 'none';
       nn.textContent = 'No snippet or email addresses found on this card.';
       row.appendChild(nn);
     }
-    setSvSite(p.site || 'davis');
+    setSvSite(p.site || 'unknown');
     resize();
   }
   var dp = readDataParam();                    // primary: URL-routed data
   if(dp){
     if(dp.o && typeof dp.o === 'object') OVR = dp.o;
+    if(dp.l && typeof dp.l === 'object') LINKS_STORE = dp.l;
+    if(dp.m) state.memberFirst = dp.m;
+    if(dp.so === 'personal' || dp.so === 'team') setSvSignoff(dp.so);
     fill(dp.n, dp.d);
   }
   else {                                       // fallback: iframe channel
@@ -1229,9 +1468,11 @@ function initSummary(){
       t.render(function(){
         Promise.all([
           t.card('name','desc').catch(function(){ return {name:'',desc:''}; }),
-          t.get('board','shared','msgTpl').catch(function(){ return {}; })
+          t.get('board','shared','msgTpl').catch(function(){ return {}; }),
+          t.get('board','shared','msgLinks').catch(function(){ return {}; })
         ]).then(function(r){
           if(r[1] && typeof r[1] === 'object') OVR = r[1];
+          if(r[2] && typeof r[2] === 'object') LINKS_STORE = r[2];
           fill(r[0].name, r[0].desc);
         }, function(){ fill('',''); });
       });
@@ -1247,14 +1488,23 @@ function initEditor(){
   var dp = readDataParam();                    // primary: URL-routed data
   if(dp){
     if(dp.o && typeof dp.o === 'object') OVR = dp.o;
+    if(dp.l && typeof dp.l === 'object') LINKS_STORE = dp.l;
+    if(dp.m) state.memberFirst = dp.m;
+    if(dp.so === 'personal' || dp.so === 'team') setSignoff(dp.so);
     hydrate(dp.n, dp.d);
   }
   else if(_t){                                 // fallback: iframe channel
     Promise.all([
       _t.card('name','desc').catch(function(){ return {name:'',desc:''}; }),
-      _t.get('board','shared','msgTpl').catch(function(){ return {}; })
+      _t.get('board','shared','msgTpl').catch(function(){ return {}; }),
+      _t.get('board','shared','msgLinks').catch(function(){ return {}; }),
+      _t.member('fullName').catch(function(){ return {}; }),
+      _t.get('board','private','signoff').catch(function(){ return ''; })
     ]).then(function(r){
       if(r[1] && typeof r[1] === 'object') OVR = r[1];
+      if(r[2] && typeof r[2] === 'object') LINKS_STORE = r[2];
+      state.memberFirst = ((r[3] && r[3].fullName) || '').split(/\s+/)[0] || '';
+      if(r[4] === 'personal' || r[4] === 'team') setSignoff(r[4]);
       hydrate(r[0].name, r[0].desc);
     }, function(){ hydrate('',''); });
   } else hydrate('','');
