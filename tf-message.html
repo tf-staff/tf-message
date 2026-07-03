@@ -42,7 +42,10 @@
   [data-color-mode="dark"] .seg button[aria-pressed="true"]{color:#1d2125}
   .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:1px}
   .autochip{font-size:10.5px;color:var(--dimmer);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
-  .sofflbl{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  .ctlbar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+  .ctlbar .autochip{align-self:center;margin-bottom:4px}
+  .ctl{display:flex;flex-direction:column;gap:3px}
+  .ctl > label{font-size:11px;font-weight:700;color:var(--dim)}
 
   /* client strip (click any item to copy it) */
   .client{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:2px 0 10px;margin-bottom:8px;border-bottom:1px solid var(--line)}
@@ -194,6 +197,7 @@
       <button id="svUnk" aria-pressed="false">Unknown</button>
     </div>
     <span style="flex:1 1 auto"></span>
+    <span class="plbl" style="flex:0 0 auto">Sign-off</span>
     <div class="seg" role="group" aria-label="Sign-off">
       <button id="svSoP" aria-pressed="false">Personal</button>
       <button id="svSoT" aria-pressed="true">Team</button>
@@ -218,23 +222,30 @@
 
   <div class="client" id="clientStrip"></div>
 
-  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <div class="seg" role="group" aria-label="Location">
-      <button id="segDavis" aria-pressed="false">Davis</button>
-      <button id="segAS" aria-pressed="false">Aggie Square</button>
-      <button id="segUnk" aria-pressed="false">Unknown</button>
+  <div class="ctlbar">
+    <div class="ctl">
+      <label>Location</label>
+      <div class="seg" role="group" aria-label="Location">
+        <button id="segDavis" aria-pressed="false">Davis</button>
+        <button id="segAS" aria-pressed="false">Aggie Square</button>
+        <button id="segUnk" aria-pressed="false">Unknown</button>
+      </div>
     </div>
-    <div class="seg" role="group" aria-label="Client type">
-      <button id="tierInt" aria-pressed="true">Internal</button>
-      <button id="tierExt" aria-pressed="false">External</button>
+    <div class="ctl">
+      <label>Client type</label>
+      <div class="seg" role="group" aria-label="Client type">
+        <button id="tierInt" aria-pressed="true">Internal</button>
+        <button id="tierExt" aria-pressed="false">External</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <label>Sign-off</label>
+      <div class="seg" role="group" aria-label="Sign-off">
+        <button id="soPersonal" aria-pressed="false">Personal</button>
+        <button id="soTeam" aria-pressed="true">Team</button>
+      </div>
     </div>
     <span class="autochip" id="autoChip" hidden>auto-detected from card</span>
-    <span style="flex:1 1 auto"></span>
-    <span class="sofflbl">Sign-off</span>
-    <div class="seg" role="group" aria-label="Sign-off">
-      <button id="soPersonal" aria-pressed="false">Personal</button>
-      <button id="soTeam" aria-pressed="true">Team</button>
-    </div>
   </div>
 
   <div id="tplArea"></div>
@@ -295,7 +306,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.14';
+var VERSION = '1.15';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -441,8 +452,8 @@ function platformLine(platform, c){
       return 'We can meet at either our Davis facility (Room 1703 GBSF) or at Aggie Square in Sacramento (Room 1730) \u2014 let us know which is more convenient.';
     }
     return 'We\u2019d meet at our ' + (state.site === 'as'
-      ? ('Aggie Square facility (Room 1730, ' + F.asAddress + ')')
-      : ('Davis facility (Room 1703 GBSF, ' + F.davisAddress + ')')) + '.';
+      ? ('Aggie Square facility (' + F.asAddress + ')')
+      : ('Davis facility (' + F.davisAddress + ')')) + '.';
   }
   if(platform === 'zoom') return 'We\u2019ll set it up as a Zoom meeting and send you a link.';
   if(platform === 'phone') return 'We\u2019ll give you a call' + (c.phone ? (' at ' + c.phone) : '') + '.';
@@ -463,8 +474,8 @@ function baseTokens(v, c){
     code: CONFIG.LOCKER_CODES[v.locker] || '{{miss:code}}',
     radoncCode: CONFIG.LOCKER_CODES[1],
     teamCode: F.teamBoxCode,
-    siteFacility: (state.site === 'as') ? ('Aggie Square facility (Room 1730, ' + F.asAddress + ')')
-                : (state.site === 'davis') ? ('Davis facility (Room 1703 GBSF, ' + F.davisAddress + ')')
+    siteFacility: (state.site === 'as') ? ('Aggie Square facility (' + F.asAddress + ')')
+                : (state.site === 'davis') ? ('Davis facility (' + F.davisAddress + ')')
                 : 'facility (Davis or Aggie Square \u2014 we\u2019ll confirm which)',
     asAddress: F.asAddress, asHours: F.asHours, asGarage: F.asGarage,
     davisAddress: F.davisAddress, davisPhone: F.davisPhone,
@@ -1018,7 +1029,9 @@ function buildTemplates(){
   if(groups.indexOf(state.cat) === -1) state.cat = groups[0];
 
   var bar = document.createElement('div'); bar.className = 'catbar';
-  var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Category');
+  var ctl = document.createElement('div'); ctl.className = 'ctl';
+  var lab = document.createElement('label'); lab.textContent = 'Message type';
+  var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Message type');
   groups.forEach(function(g){
     var b = document.createElement('button'); b.textContent = g;
     b.setAttribute('aria-pressed', state.cat === g ? 'true' : 'false');
@@ -1030,7 +1043,8 @@ function buildTemplates(){
     };
     seg.appendChild(b);
   });
-  bar.appendChild(seg);
+  ctl.appendChild(lab); ctl.appendChild(seg);
+  bar.appendChild(ctl);
   host.appendChild(bar);
 
   var list = TEMPLATES.filter(function(t){
