@@ -150,13 +150,16 @@
   body.tp-summary #summaryView{display:block}
   body.tp-summary #app{display:none}
   #summaryView .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  #summaryView .who{font-weight:700;color:var(--head);font-size:13px}
-  #summaryView .loc{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
-    color:var(--blue);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
-  #summaryView .snip2{display:flex;align-items:center;gap:8px;margin-top:8px}
-  #summaryView .snip2 .txt{flex:1;min-width:0;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,Menlo,Consolas,monospace}
-  #summaryView .foot{margin-top:8px;font-size:11px;color:var(--dimmer)}
-  #summaryView .foot b{color:var(--dim)}
+  #summaryView .svbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  #summaryView .svbtns .btn{font-size:11.5px;padding:4px 11px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #summaryView .svbtns .none{font-size:11px;color:var(--dimmer);font-style:italic;align-self:center}
+  #summaryView .svpick{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+  #summaryView .plbl{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+  #summaryView .svlockers{display:flex;gap:5px;flex-wrap:wrap}
+  #summaryView .lk{width:44px;padding:4px 0 3px}
+  #summaryView .lk .n{font-size:13px}
+  #summaryView .lk .c{font-size:9px}
+  #summaryView .lk.ok{border-color:rgba(75,206,151,.7);outline:2px solid rgba(75,206,151,.5)}
 
   @media (max-width:520px){ body{padding:12px 8px} .panel{padding:12px 12px} .chip{max-width:100%} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
@@ -165,11 +168,18 @@
 <body>
 
 <div id="summaryView">
-  <div class="row"><span class="loc" id="svLoc">—</span><span class="who" id="svWho">TF-Message</span>
-    <span style="margin-left:auto;font-size:10px;color:var(--dimmer)" id="svVer"></span></div>
-  <div class="snip2"><span class="txt" id="svSnip">No purchasing snippet found on this card.</span>
-    <button class="btn" id="svCopy">Copy</button></div>
-  <div class="foot" id="svFoot">Open the composer to generate a client message.</div>
+  <div class="row">
+    <div class="seg" role="group" aria-label="Location">
+      <button id="svDavis" aria-pressed="false">Davis</button>
+      <button id="svAS" aria-pressed="false">Aggie Sq</button>
+    </div>
+    <span style="margin-left:auto;font-size:10px;color:var(--dimmer)" id="svVer"></span>
+  </div>
+  <div class="svbtns" id="svCopyRow"></div>
+  <div class="svpick">
+    <span class="plbl">Ready for pickup —</span>
+    <div class="svlockers" id="svPick"></div>
+  </div>
 </div>
 
 <div class="panel" id="app">
@@ -238,7 +248,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.8';
+var VERSION = '1.9';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -1103,7 +1113,7 @@ function initConnector(){
         return {
           title: 'TF-Message',
           icon: TRELLO_ICON,
-          content: { type:'iframe', url: sUrl, height: 108 },
+          content: { type:'iframe', url: sUrl, height: 168 },
           action: { text: 'Open', callback: function(tt){
             return tt.modal({ url: eUrl, fullscreen: false, height: 980, title: '', accentColor: '#242528' });
           } }
@@ -1129,29 +1139,106 @@ function initSummary(){
   applyTheme(t);
   [150,600,1600].forEach(function(ms){ setTimeout(function(){ applyTheme(t); }, ms); });
   $('#svVer').textContent = 'v' + VERSION;
-  var fill = function(name, desc){
-    var p = parseDesc(desc || '');
-    $('#svLoc').textContent = p.site === 'as' ? 'Aggie Sq' : (p.site === 'davis' ? 'Davis' : 'no pref');
-    $('#svWho').textContent = p.clientName || name || 'TF-Message';
-    var snip = p.snippet || (p.acct ? buildSnippet(p, name) : null);
-    var st = $('#svSnip');
-    if(snip){ st.textContent = snip; $('#svCopy').disabled = false;
-      $('#svCopy').onclick = function(){ copyPlain(snip, $('#svCopy')); };
-    } else { st.textContent = 'No purchasing snippet found on this card.'; $('#svCopy').disabled = true; }
-    $('#svFoot').innerHTML = (p.email ? ('<b>' + esc(p.email) + '</b> \u00b7 ') : '') + 'Open the composer to generate a client message.';
-    try{ if(t.sizeTo) t.sizeTo('#summaryView'); }catch(e){}
-  };
+  var site = 'davis';
+
+  function resize(){ try{ if(t.sizeTo) t.sizeTo('#summaryView'); }catch(e){} }
+  function flash(el, ok){
+    el.classList.add(ok === false ? 'err' : 'ok');
+    setTimeout(function(){ el.classList.remove('ok'); el.classList.remove('err'); }, 1200);
+  }
+  function quickCopyPickup(lockerN, btn){
+    /* Entire-project 'Ready for pickup' via the real template pipeline,
+       so board wording overrides apply here too. */
+    state.vals = { scope:'complete' };
+    if(site === 'as') state.vals.locker = String(lockerN);
+    var tpl = TEMPLATES.find(function(x){ return x.id === (site === 'as' ? 'pickup_as' : 'pickup_davis'); });
+    var blocks = textToBlocks(expandText(tpl));
+    var html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45">' +
+               blocksToHtml(blocks).replace(/<span class="miss">([^<]*)<\/span>/g, '$1') + '</div>';
+    var text = blocksToText(blocks);
+    copyRich(html, text, null);
+    flash(btn);
+  }
+  function renderPickRow(){
+    var host = $('#svPick'); host.innerHTML = '';
+    if(site === 'as'){
+      for(var i = 2; i <= 8; i++)(function(n){
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'lk';
+        b.title = 'Copy pickup notice for locker ' + n;
+        b.innerHTML = '<span class="n">' + n + '</span><span class="c num">' + CONFIG.LOCKER_CODES[n] + '</span>';
+        b.onclick = function(){ quickCopyPickup(n, b); };
+        host.appendChild(b);
+      })(i);
+    } else {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
+      b.textContent = 'Copy pickup notice (TEAM box)';
+      b.onclick = function(){ quickCopyPickup(null, b); };
+      host.appendChild(b);
+    }
+    resize();
+  }
+  function setSvSite(x){
+    site = x;
+    $('#svDavis').setAttribute('aria-pressed', x === 'davis' ? 'true' : 'false');
+    $('#svAS').setAttribute('aria-pressed', x === 'as' ? 'true' : 'false');
+    renderPickRow();
+  }
+  $('#svDavis').onclick = function(){ setSvSite('davis'); };
+  $('#svAS').onclick = function(){ setSvSite('as'); };
+
+  function copyBtn(label, val){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
+    b.textContent = label; b.title = 'Copy: ' + val;
+    b.onclick = function(){ copyPlain(val, null); flash(b); };
+    return b;
+  }
+  function fill(name, desc){
+    state.cardName = name || '';
+    state.desc = desc || '';
+    state.parsed = parseDesc(desc);
+    var p = state.parsed;
+    var row = $('#svCopyRow'); row.innerHTML = '';
+    // purchasing snippet
+    if(p.snippet || p.acct){
+      row.appendChild(copyBtn('Purchasing snippet', currentSnippet()));
+    }
+    // client email first, then every other email in the description, deduped
+    var seen = {};
+    if(p.email){ seen[p.email.toLowerCase()] = true; row.appendChild(copyBtn(p.email, p.email)); }
+    var re = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, m;
+    while((m = re.exec(desc || ''))){
+      var e = m[0], k = e.toLowerCase();
+      if(seen[k]) continue; seen[k] = true;
+      row.appendChild(copyBtn(e, e));
+    }
+    if(!row.childNodes.length){
+      var nn = document.createElement('span'); nn.className = 'none';
+      nn.textContent = 'No snippet or email addresses found on this card.';
+      row.appendChild(nn);
+    }
+    setSvSite(p.site || 'davis');
+    resize();
+  }
   var dp = readDataParam();                    // primary: URL-routed data
-  if(dp){ fill(dp.n, dp.d); }
+  if(dp){
+    if(dp.o && typeof dp.o === 'object') OVR = dp.o;
+    fill(dp.n, dp.d);
+  }
   else {                                       // fallback: iframe channel
     try{
       t.render(function(){
-        t.card('name','desc').then(function(c){ fill(c.name, c.desc); }, function(){ fill('',''); });
+        Promise.all([
+          t.card('name','desc').catch(function(){ return {name:'',desc:''}; }),
+          t.get('board','shared','msgTpl').catch(function(){ return {}; })
+        ]).then(function(r){
+          if(r[1] && typeof r[1] === 'object') OVR = r[1];
+          fill(r[0].name, r[0].desc);
+        }, function(){ fill('',''); });
       });
     }catch(e){ fill('',''); }
-    setTimeout(function(){ if(!$('#svWho').textContent) fill('',''); }, 3000);
+    setTimeout(function(){ if(!$('#svCopyRow').childNodes.length) fill('',''); }, 3000);
   }
-  [400,1200,2400].forEach(function(ms){ setTimeout(function(){ try{ if(t.sizeTo) t.sizeTo('#summaryView'); }catch(e){} }, ms); });
+  [400,1200,2400].forEach(function(ms){ setTimeout(resize, ms); });
 }
 function initEditor(){
   try{ _t = window.TrelloPowerUp.iframe(); }catch(e){ _t = null; }
@@ -1177,8 +1264,8 @@ function boot(){
   var view = getParam('view');
   var framed = (window.self !== window.top);
   var hasTrello = (typeof window.TrelloPowerUp !== 'undefined');
-  if(hasTrello && framed && view === 'summary'){ document.body.classList.add('tp-summary'); initSummary(); }
-  else if(hasTrello && framed && view === 'editor'){ initEditor(); }
+  if(hasTrello && view === 'summary'){ document.body.classList.add('tp-summary'); initSummary(); }
+  else if(hasTrello && view === 'editor'){ initEditor(); }
   else if(hasTrello && framed && !view){ document.body.classList.add('tp-connector'); document.getElementById('app').style.display='none'; initConnector(); }
   else { initStandalone(); }
 }
