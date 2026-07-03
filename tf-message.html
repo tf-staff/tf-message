@@ -261,6 +261,9 @@
     <div class="fields" style="padding:8px 0 6px">
       <div class="fld"><label for="setTpl">Template</label><select id="setTpl"></select></div>
       <div class="fld"><label for="setName">Button name</label><input id="setName" type="text" maxlength="40"></div>
+      <div class="fld" id="setVarWrap" hidden><label>Variant</label>
+        <div class="seg" id="setVarSeg" role="group" aria-label="Variant"></div>
+      </div>
     </div>
     <textarea id="setText" spellcheck="true" aria-label="Template text"></textarea>
     <div class="toklegend" id="tokLegend"></div>
@@ -292,7 +295,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.13';
+var VERSION = '1.14';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -424,6 +427,9 @@ var TOKEN_HELP = {
   snippetBlock:'the card\u2019s purchasing snippet, verbatim (or one rebuilt from client + account)',
   askLine:'the time proposal \u2014 phrasing follows the Exact/Range slider',
   amountClause:'\u201c totaling $\u2026\u201d or blank', validClause:'estimate validity sentence or blank',
+  inpersonReason:'why we\u2019re handing off in person \u2014 follows the Reason dropdown',
+  siteFacility:'the selected facility with room + address (follows the location slider)',
+  suppliesEta:'supply-arrival sentence \u2014 follows the Expected arrival field / TBD checkbox',
   billingLine:'billing sentence \u2014 follows the Internal/External slider',
   startLine:'how-to-start sentence with the right intake link \u2014 follows the Internal/External slider',
   platformLine:'meeting-format sentence \u2014 follows the platform slider (address for in-person, client\u2019s phone for calls)',
@@ -457,6 +463,9 @@ function baseTokens(v, c){
     code: CONFIG.LOCKER_CODES[v.locker] || '{{miss:code}}',
     radoncCode: CONFIG.LOCKER_CODES[1],
     teamCode: F.teamBoxCode,
+    siteFacility: (state.site === 'as') ? ('Aggie Square facility (Room 1730, ' + F.asAddress + ')')
+                : (state.site === 'davis') ? ('Davis facility (Room 1703 GBSF, ' + F.davisAddress + ')')
+                : 'facility (Davis or Aggie Square \u2014 we\u2019ll confirm which)',
     asAddress: F.asAddress, asHours: F.asHours, asGarage: F.asGarage,
     davisAddress: F.davisAddress, davisPhone: F.davisPhone,
     project: c.project || '', firstName: c.firstName || '', clientName: c.clientName || '',
@@ -469,22 +478,56 @@ function baseTokens(v, c){
 var TEMPLATES = [
   /* -------- Pickup -------- */
   { id:'pickup_as', group:'Pick-up/Drop-off', site:'as', title:'Ready for pickup',
-    fields:[SCOPE_FIELD, {k:'locker',label:'Locker',type:'lockers'}],
-    text:
+    fields:[SCOPE_FIELD, {k:'handoff',label:'Handoff',type:'seg',def:'box',
+             options:[['box','Collection box'],['inperson','Scheduled in-person'],['delivery','Delivery / install']]},
+            {k:'locker',label:'Locker',type:'lockers',showIf:function(v){ return (v.handoff || 'box') === 'box'; }},
+            {k:'preason',label:'Reason',type:'select',showIf:function(v){ return v.handoff === 'inperson'; },
+             options:['No specific reason','Item is delicate','Item is large or bulky','Includes a walkthrough / demonstration']}],
+    tokens:function(v,c){
+      var r = v.preason || 'No specific reason';
+      return { inpersonReason:
+        (r === 'Item is delicate') ? 'Because the item is delicate, we\u2019d like to hand it off in person rather than use our pickup lockers.' :
+        (r === 'Item is large or bulky') ? 'Because of its size, this project won\u2019t fit our pickup lockers, so we\u2019ll hand it off in person.' :
+        (r === 'Includes a walkthrough / demonstration') ? 'We\u2019d like to hand this one off in person so we can walk you through it briefly.' :
+        'This project calls for a scheduled, in-person handoff rather than our standard pickup lockers.' };
+    },
+    texts:{
+      box:
 '{greeting}\n\n' +
 '{ready}. We have placed it in locker {locker} inside the Aggie Square Building at {asAddress}. The lockers are directly across from our facility (Room 1730), and the building is accessible {asHours}. {partialNote}\n\n' +
 'To open the locker:\n1. Press C to wake the keypad.\n2. Enter the access code: {code}\n3. Press the key button. The locker will unlock.\n\n' +
 'Photo directions from the front entrance to the lockers: {{link:asPickupGuide|Aggie Square pickup guide}}\n\n' +
-'{signoff}' },
+'{signoff}',
+      inperson: '{greeting}\n\n{ready}. {inpersonReason} {partialNote}\n\n' +
+'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{signoff}',
+      delivery: '{greeting}\n\n{ready}. To wrap it up, we\u2019d like to schedule a delivery \u2014 and we can handle installation on-site if needed. {partialNote}\n\n' +
+'Could you reply with a few dates and times that work, along with the delivery address (building and room)? We\u2019ll get it on the calendar.\n\n{signoff}'
+    } },
   { id:'pickup_davis', group:'Pick-up/Drop-off', site:'davis', title:'Ready for pickup',
-    fields:[SCOPE_FIELD],
-    text:
+    fields:[SCOPE_FIELD, {k:'handoff',label:'Handoff',type:'seg',def:'box',
+             options:[['box','Collection box'],['inperson','Scheduled in-person'],['delivery','Delivery / install']]}, {k:'preason',label:'Reason',type:'select',showIf:function(v){ return v.handoff === 'inperson'; },
+             options:['No specific reason','Item is delicate','Item is large or bulky','Includes a walkthrough / demonstration']}],
+    tokens:function(v,c){
+      var r = v.preason || 'No specific reason';
+      return { inpersonReason:
+        (r === 'Item is delicate') ? 'Because the item is delicate, we\u2019d like to hand it off in person rather than use our pickup lockers.' :
+        (r === 'Item is large or bulky') ? 'Because of its size, this project won\u2019t fit our pickup lockers, so we\u2019ll hand it off in person.' :
+        (r === 'Includes a walkthrough / demonstration') ? 'We\u2019d like to hand this one off in person so we can walk you through it briefly.' :
+        'This project calls for a scheduled, in-person handoff rather than our standard pickup lockers.' };
+    },
+    texts:{
+      box:
 '{greeting}\n\n' +
 '{ready}. We have placed it in our secure pickup box at the rear of GBSF ({davisAddress}), in the loading-dock area on the west side of the building. The box is outside, so it is accessible 24 hours a day. {partialNote}\n\n' +
 'To open the box:\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. The box will open \u2014 please take only your items and close the lid.\n\n' +
 'If the box does not accept your input on the first try, simply enter the code again ({teamCode}#).\n\n' +
 'Photos and a map of the box location: {{link:davisPickupGuide|Davis pickup guide}}\n\n' +
-'{signoff}' },
+'{signoff}',
+      inperson: '{greeting}\n\n{ready}. {inpersonReason} {partialNote}\n\n' +
+'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{signoff}',
+      delivery: '{greeting}\n\n{ready}. To wrap it up, we\u2019d like to schedule a delivery \u2014 and we can handle installation on-site if needed. {partialNote}\n\n' +
+'Could you reply with a few dates and times that work, along with the delivery address (building and room)? We\u2019ll get it on the calendar.\n\n{signoff}'
+    } },
   { id:'pickup_radonc', group:'Pick-up/Drop-off', site:'as', title:'RadOnc collection point',
     fields:[SCOPE_FIELD],
     text:
@@ -614,6 +657,7 @@ var TEMPLATES = [
         'Billing \u2014 we need a valid account string before proceeding',
         'Material decision \u2014 we need your material selection to proceed',
         'Imaging \u2014 the DICOM series we received is incomplete',
+        'Supplies \u2014 materials are on order and we\u2019re awaiting delivery',
         'Other (describe below)'
       ]},
       {k:'detail',label:'Details (optional)',type:'textarea',ph:'Anything specific the client should send or decide'}],
@@ -621,6 +665,18 @@ var TEMPLATES = [
     text:
 '{greeting}\n\nYour project{projectRef} is currently on hold \u2014 we need one thing from you before we can continue:\n\n{reasonLine}\n\n' +
 'Reply to this email and we\u2019ll pick the job right back up. Nothing is lost \u2014 it\u2019s simply paused in our queue.\n\n{signoff}' },
+  { id:'supplies', group:'Job status', site:'any', title:'Supplies on order',
+    fields:[{k:'eta',label:'Expected arrival',type:'text',ph:'e.g. week of 7/14'},
+            {k:'tbd',label:'Arrival TBD',type:'check',disables:'eta'}],
+    tokens:function(v){ return {
+      suppliesEta: v.tbd
+        ? 'We don\u2019t have a firm delivery date from the supplier yet, but we\u2019ll update you as soon as we do.'
+        : (v.eta ? ('They\u2019re expected to arrive around ' + v.eta + '.')
+                 : 'We\u2019ll update you with a timeline as soon as the supplier confirms.')
+    }; },
+    text:
+'{greeting}\n\nA quick status update on your project{projectRef}: the materials we need are on order, and the job is paused until they arrive. {suppliesEta}\n\n' +
+'No action is needed on your end \u2014 we\u2019ll pick the work right back up the moment the supplies land, and we\u2019ll keep you posted.\n\n{signoff}' },
   { id:'delay', group:'Job status', site:'any', title:'Delay notice',
     fields:[{k:'eta',label:'Revised completion',type:'text',ph:'e.g. Friday 7/10'},
             {k:'tbd',label:'Date TBD',type:'check',disables:'eta'},
@@ -703,10 +759,16 @@ var DEFAULT_LINK_LABELS = {
   davisPickupGuide:'Davis pickup guide', davisDirections:'Find Us — Davis',
   asDirections:'Find Us — Aggie Square', feedbackForm:'Quick survey', intakeForm:'Project intake form'
 };
-function effectiveText(t){
-  var v = OVR[t.id];
-  if(typeof v === 'string') return v;
-  if(v && typeof v.t === 'string') return v.t;
+function effectiveText(t){ return effectiveTextV(t, t.texts ? (state.vals.handoff || 'box') : null); }
+function effectiveTextV(t, variant){
+  var o = OVR[t.id];
+  if(t.texts){
+    var base = t.texts[variant] || t.texts.box;
+    if(o && typeof o === 'object' && o.t && typeof o.t === 'object' && typeof o.t[variant] === 'string') return o.t[variant];
+    return base;
+  }
+  if(typeof o === 'string') return o;
+  if(o && typeof o.t === 'string') return o.t;
   return t.text;
 }
 function effectiveTitle(t){
@@ -998,7 +1060,8 @@ function buildFields(){
   var t = TEMPLATES.find(function(x){ return x.id === state.tpl; });
   if(!t || !t.fields.length){ host.hidden = true; return; }
   host.hidden = false;
-  t.fields.forEach(function(f){
+  var visible = t.fields.filter(function(f){ return !f.showIf || f.showIf(state.vals); });
+  visible.forEach(function(f){
     var wrap = document.createElement('div'); wrap.className = 'fld';
     var lab = document.createElement('label'); lab.textContent = f.label; lab.htmlFor = 'f_' + f.k;
     wrap.appendChild(lab);
@@ -1010,8 +1073,7 @@ function buildFields(){
         b.setAttribute('aria-pressed', (state.vals[f.k] === o[0]) ? 'true' : 'false');
         b.onclick = function(){
           state.vals[f.k] = o[0]; state.edited = false;
-          input.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
-          b.setAttribute('aria-pressed','true');
+          buildFields();
           renderPreview();
         };
         input.appendChild(b);
@@ -1044,6 +1106,7 @@ function buildFields(){
       wrap.classList.add('qwide');
       var qrow = document.createElement('div'); qrow.className = 'qrow';
       input = document.createElement('textarea'); input.placeholder = f.ph || '';
+      input.value = state.vals[f.k] != null ? state.vals[f.k] : '';
       var pbtn = document.createElement('button'); pbtn.type = 'button'; pbtn.className = 'btn';
       pbtn.textContent = 'Paste from clipboard';
       var applyQuote = function(){
@@ -1074,6 +1137,7 @@ function buildFields(){
     if(f.type === 'check'){
       wrap.classList.add('fchk');
       input = document.createElement('input'); input.type = 'checkbox'; input.id = 'f_' + f.k;
+      input.checked = !!state.vals[f.k];
       input.onchange = function(){
         state.vals[f.k] = input.checked; state.edited = false;
         if(f.disables){
@@ -1091,18 +1155,28 @@ function buildFields(){
       input = document.createElement('select');
       var o0 = document.createElement('option'); o0.value=''; o0.textContent='— choose —'; input.appendChild(o0);
       f.options.forEach(function(o){ var op = document.createElement('option'); op.value = o; op.textContent = o; input.appendChild(op); });
+      input.value = state.vals[f.k] != null ? state.vals[f.k] : '';
     } else if(f.type === 'textarea'){
       input = document.createElement('textarea'); input.placeholder = f.ph || '';
+      input.value = state.vals[f.k] != null ? state.vals[f.k] : '';
     } else {
       input = document.createElement('input'); input.type = 'text'; input.placeholder = f.ph || '';
     }
     input.id = 'f_' + f.k;
+    input.value = state.vals[f.k] != null ? state.vals[f.k] : '';
     input.oninput = input.onchange = function(){
       state.vals[f.k] = input.value; state.edited = false;
       renderPreview();
     };
     wrap.appendChild(input);
     host.appendChild(wrap);
+  });
+  // re-apply checkbox 'disables' relationships after rebuild
+  visible.forEach(function(f){
+    if(f.type === 'check' && f.disables && state.vals[f.k]){
+      var tgt = document.getElementById('f_' + f.disables);
+      if(tgt){ tgt.disabled = true; tgt.style.opacity = '.45'; }
+    }
   });
 }
 function renderPreview(){
@@ -1140,7 +1214,8 @@ function hydrate(cardName, desc){
 }
 /* ---------------------- settings (wording editor) -------------------- */
 var OVR_LIMIT = 3800;   // Trello pluginData caps a scope around 4096 chars — stay under
-var SET = { cur:null };
+var SET = { cur:null, variant:'box' };
+var VARIANT_LABELS = { box:'Collection box', inperson:'Scheduled in-person', delivery:'Delivery / install' };
 function siteLabel(x){ return x==='as' ? 'Aggie Square' : (x==='davis' ? 'Davis' : 'Both sites'); }
 function ovrSize(){ try{ return JSON.stringify(OVR).length; }catch(e){ return 0; } }
 function updateBudget(){
@@ -1167,14 +1242,31 @@ function loadSetTpl(id){
   var t = TEMPLATES.find(function(x){ return x.id === id; }) || TEMPLATES[0];
   SET.cur = t.id;
   $('#setTpl').value = t.id;
-  $('#setText').value = effectiveText(t);
+  var wrap = $('#setVarWrap');
+  if(t.texts){
+    wrap.hidden = false;
+    if(!t.texts[SET.variant]) SET.variant = 'box';
+    var segEl = $('#setVarSeg'); segEl.innerHTML = '';
+    Object.keys(t.texts).forEach(function(vk){
+      var b = document.createElement('button'); b.type = 'button';
+      b.textContent = VARIANT_LABELS[vk] || vk;
+      b.setAttribute('aria-pressed', SET.variant === vk ? 'true' : 'false');
+      b.onclick = function(){ SET.variant = vk; loadSetTpl(t.id); };
+      segEl.appendChild(b);
+    });
+    $('#setText').value = effectiveTextV(t, SET.variant);
+  } else {
+    wrap.hidden = true;
+    $('#setText').value = effectiveTextV(t, null);
+  }
   $('#setName').value = effectiveTitle(t);
   $('#modChip').hidden = !(t.id in OVR);
   renderLinkRows();
   // token legend: tokens present in the *default* text, plus link markers note
   var host = $('#tokLegend'); host.innerHTML = '';
   var seen = {}, re = /\{([A-Za-z]\w*)\}/g, m;
-  while((m = re.exec(t.text))){ seen[m[1]] = true; }
+  var legendSrc = t.texts ? (t.texts[SET.variant] || t.texts.box) : t.text;
+  while((m = re.exec(legendSrc))){ seen[m[1]] = true; }
   Object.keys(seen).forEach(function(k){
     var el = document.createElement('span'); el.className = 'tok';
     el.innerHTML = '<b>{' + esc(k) + '}</b> ' + esc(TOKEN_HELP[k] || '');
@@ -1288,9 +1380,16 @@ function initSettings(){
     var txt = $('#setText').value;
     var name = $('#setName').value.trim();
     setWarn('');
-    var prev = OVR[t.id];
+    var prev = OVR[t.id] ? JSON.parse(JSON.stringify(OVR[t.id])) : undefined;
     var entry = {};
-    if(txt !== t.text) entry.t = txt;
+    var cur = OVR[t.id];
+    if(t.texts){
+      var tt = (cur && typeof cur === 'object' && cur.t && typeof cur.t === 'object') ? cur.t : {};
+      if(txt !== t.texts[SET.variant]) tt[SET.variant] = txt; else delete tt[SET.variant];
+      if(Object.keys(tt).length) entry.t = tt;
+    } else {
+      if(txt !== t.text) entry.t = txt;
+    }
     if(name && name !== t.title) entry.n = name;
     if(!entry.t && !entry.n){ delete OVR[t.id]; }
     else { OVR[t.id] = entry; }
@@ -1428,7 +1527,7 @@ function initSummary(){
     /* Entire-project 'Ready for pickup' via the real template pipeline,
        so board wording overrides apply here too. */
     state.site = site;
-    state.vals = { scope:'complete' };
+    state.vals = { scope:'complete', handoff:'box' };
     if(site === 'as') state.vals.locker = String(lockerN);
     var tplId = (site === 'as') ? 'pickup_as' : (site === 'davis' ? 'pickup_davis' : 'ask_location');
     var tpl = TEMPLATES.find(function(x){ return x.id === tplId; });
