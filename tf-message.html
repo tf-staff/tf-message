@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TF-Message — Tech Foundry Power-Up</title>
+<style>html{background:transparent}</style>
+<script>
+/* Runs before the body exists: prevents the composer HTML from flashing
+   inside summary/connector iframes on first paint. */
+try{
+  var _v = new URLSearchParams(location.search).get('view');
+  if(_v !== 'editor' && window.self !== window.top){
+    document.documentElement.classList.add('pre-hide-app');
+  }
+}catch(e){}
+</script>
+<style>html.pre-hide-app #app{display:none !important}</style>
 <script src="https://p.trellocdn.com/power-up.min.js"></script>
 <style>
   :root{
@@ -317,7 +329,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.18';
+var VERSION = '1.19';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -1509,8 +1521,10 @@ function initConnector(){
         var first = ((r[3] && r[3].fullName) || '').split(/\s+/)[0] || '';
         var soPref = (r[4] === 'personal' || r[4] === 'team') ? r[4] : '';
         var dstr = buildDataParam(card.name, card.desc, ovr, links, first, soPref);
-        var sUrl = SELF + '?view=summary&cb=' + Date.now() + '&d=' + dstr;
-        var eUrl = SELF + '?view=editor&cb=' + Date.now() + '&d=' + dstr;
+        // No cache-buster: identical data -> identical URL -> Trello keeps the
+        // iframe alive instead of reloading it on every section re-render.
+        var sUrl = SELF + '?view=summary&d=' + dstr;
+        var eUrl = SELF + '?view=editor&d=' + dstr;
         try{ if(t.signUrl){ sUrl = t.signUrl(sUrl); } }catch(e){}
         return {
           title: 'TF-Message \u00b7 v' + VERSION,
