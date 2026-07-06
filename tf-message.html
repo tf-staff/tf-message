@@ -182,7 +182,8 @@
   #summaryView .lk .c{font-size:9px}
   #summaryView .lk.ok{border-color:rgba(75,206,151,.7);outline:2px solid rgba(75,206,151,.5)}
   #summaryView.svempty .svrow{display:none}
-  #svEmpty{font-size:12px;color:var(--dimmer);font-style:italic;padding:2px 0}
+  #summaryView.svempty{background:transparent;border-radius:0;padding:6px 2px}
+  #svEmpty{font-size:12px;color:var(--dimmer);font-style:normal}
 
   @media (max-width:520px){ body{padding:12px 8px} .panel{padding:12px 12px} .chip{max-width:100%} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
@@ -309,7 +310,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.17';
+var VERSION = '1.17.1';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
