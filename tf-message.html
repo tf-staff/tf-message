@@ -181,6 +181,8 @@
   #summaryView .lk .n{font-size:13px}
   #summaryView .lk .c{font-size:9px}
   #summaryView .lk.ok{border-color:rgba(75,206,151,.7);outline:2px solid rgba(75,206,151,.5)}
+  #summaryView.svempty .svrow{display:none}
+  #svEmpty{font-size:12px;color:var(--dimmer);font-style:italic;padding:2px 0}
 
   @media (max-width:520px){ body{padding:12px 8px} .panel{padding:12px 12px} .chip{max-width:100%} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
@@ -196,8 +198,9 @@
       <button id="svAS" aria-pressed="false">Aggie Sq</button>
       <button id="svUnk" aria-pressed="false">Unknown</button>
     </div>
-    <span style="flex:1 1 auto"></span>
-    <span class="plbl" style="flex:0 0 auto">Sign-off</span><!-- ver moved to section title -->
+  </div>
+  <div class="svrow">
+    <span class="plbl">Sign-off</span>
     <div class="seg" role="group" aria-label="Sign-off">
       <button id="svSoP" aria-pressed="false">Personal</button>
       <button id="svSoT" aria-pressed="true">Team</button>
@@ -211,6 +214,7 @@
     <span class="plbl">Pickup</span>
     <div class="svlockers" id="svPick"></div>
   </div>
+  <div id="svEmpty" hidden>No message data found</div>
 </div>
 
 <div class="panel" id="app">
@@ -305,7 +309,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.16';
+var VERSION = '1.17';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -1605,6 +1609,12 @@ function initSummary(){
     state.desc = desc || '';
     state.parsed = parseDesc(desc);
     var p = state.parsed;
+    var anyEmail = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(desc || '');
+    var hasData = !!(p.email || p.snippet || p.acct || p.clientName || p.site || anyEmail);
+    var sv = $('#summaryView');
+    sv.classList.toggle('svempty', !hasData);
+    $('#svEmpty').hidden = hasData;
+    if(!hasData){ resize(); return; }
     var row = $('#svCopyRow'); row.innerHTML = '';
     // purchasing snippet
     if(p.snippet || p.acct){
