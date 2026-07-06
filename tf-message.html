@@ -212,6 +212,13 @@
     <div class="svbtns" id="svCopyRow"></div>
   </div>
   <div class="svrow">
+    <span class="plbl">Scope</span>
+    <div class="seg" role="group" aria-label="Scope">
+      <button id="svScE" aria-pressed="true">Entire project</button>
+      <button id="svScP" aria-pressed="false">Partial delivery</button>
+    </div>
+  </div>
+  <div class="svrow">
     <span class="plbl">Pickup</span>
     <div class="svlockers" id="svPick"></div>
   </div>
@@ -310,7 +317,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.17.1';
+var VERSION = '1.18';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -1534,6 +1541,7 @@ function initSummary(){
   applyTheme(t);
   [150,600,1600].forEach(function(ms){ setTimeout(function(){ applyTheme(t); }, ms); });
   var site = 'davis';
+  var svScope = 'complete';
 
   function resize(){ try{ if(t.sizeTo) t.sizeTo('#summaryView'); }catch(e){} }
   function flash(el, ok){
@@ -1544,7 +1552,7 @@ function initSummary(){
     /* Entire-project 'Ready for pickup' via the real template pipeline,
        so board wording overrides apply here too. */
     state.site = site;
-    state.vals = { scope:'complete', handoff:'box' };
+    state.vals = { scope: svScope, handoff:'box' };
     if(site === 'as') state.vals.locker = String(lockerN);
     var tplId = (site === 'as') ? 'pickup_as' : (site === 'davis' ? 'pickup_davis' : 'ask_location');
     var tpl = TEMPLATES.find(function(x){ return x.id === tplId; });
@@ -1597,6 +1605,13 @@ function initSummary(){
   $('#svUnk').onclick = function(){ setSvSite('unknown'); };
   $('#svSoP').onclick = function(){ setSvSignoff('personal'); };
   $('#svSoT').onclick = function(){ setSvSignoff('team'); };
+  function setSvScope(x){
+    svScope = x;
+    $('#svScE').setAttribute('aria-pressed', x === 'complete' ? 'true' : 'false');
+    $('#svScP').setAttribute('aria-pressed', x === 'partial' ? 'true' : 'false');
+  }
+  $('#svScE').onclick = function(){ setSvScope('complete'); };
+  $('#svScP').onclick = function(){ setSvScope('partial'); };
 
   function copyBtn(label, display, val){
     var b = document.createElement('button'); b.type = 'button'; b.className = 'cbtn';
