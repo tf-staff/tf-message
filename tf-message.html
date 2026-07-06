@@ -197,12 +197,11 @@
       <button id="svUnk" aria-pressed="false">Unknown</button>
     </div>
     <span style="flex:1 1 auto"></span>
-    <span class="plbl" style="flex:0 0 auto">Sign-off</span>
+    <span class="plbl" style="flex:0 0 auto">Sign-off</span><!-- ver moved to section title -->
     <div class="seg" role="group" aria-label="Sign-off">
       <button id="svSoP" aria-pressed="false">Personal</button>
       <button id="svSoT" aria-pressed="true">Team</button>
     </div>
-    <span style="font-size:10px;color:var(--dimmer)" id="svVer"></span>
   </div>
   <div class="svrow">
     <span class="plbl">Copy</span>
@@ -306,7 +305,7 @@
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.15';
+var VERSION = '1.16';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -1502,7 +1501,7 @@ function initConnector(){
         var eUrl = SELF + '?view=editor&cb=' + Date.now() + '&d=' + dstr;
         try{ if(t.signUrl){ sUrl = t.signUrl(sUrl); } }catch(e){}
         return {
-          title: 'TF-Message',
+          title: 'TF-Message \u00b7 v' + VERSION,
           icon: TRELLO_ICON,
           content: { type:'iframe', url: sUrl, height: 168 },
           action: { text: 'Open', callback: function(tt){
@@ -1529,7 +1528,6 @@ function initSummary(){
   var t = window.TrelloPowerUp.iframe(); _t = t;
   applyTheme(t);
   [150,600,1600].forEach(function(ms){ setTimeout(function(){ applyTheme(t); }, ms); });
-  $('#svVer').textContent = 'v' + VERSION;
   var site = 'davis';
 
   function resize(){ try{ if(t.sizeTo) t.sizeTo('#summaryView'); }catch(e){} }
