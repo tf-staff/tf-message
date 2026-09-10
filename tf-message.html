@@ -195,10 +195,9 @@ try{
   #summaryView .lk.ok{border-color:rgba(75,206,151,.7);outline:2px solid rgba(75,206,151,.5)}
   #summaryView .lk.ronc{width:auto;padding:4px 9px 3px}
   #summaryView .lk.ronc .n{font-size:11px}
-  #svTpl{font:inherit;font-size:12px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;max-width:100%}
-  #svTpl:focus{outline:none;border-color:var(--blue)}
-  #svFields .fld input,#svFields .fld select{min-width:110px}
-  #svFields .fld textarea{min-width:200px}
+  #summaryView .svbtns .btn{font-size:11.5px;padding:4px 11px}
+  #summaryView .svbtns .btn.more{border-style:dashed;color:var(--dim)}
+  #summaryView .svbtns .btn.more:hover{color:var(--text)}
   #summaryView.svempty .svrow{display:none}
   #summaryView.svempty{background:transparent;border-radius:0;padding:6px 2px}
   #svEmpty{font-size:12px;color:var(--dimmer);font-style:normal}
@@ -230,17 +229,6 @@ try{
     <div class="svbtns" id="svCopyRow"></div>
   </div>
   <div class="svrow">
-    <span class="plbl">Message</span>
-    <select id="svTpl" aria-label="Message type"></select>
-  </div>
-  <div class="svrow" id="svFieldsRow" hidden>
-    <span class="plbl">Details</span>
-    <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:8px">
-      <div class="fields" id="svFields" style="padding:0"></div>
-      <div><button class="btn primary" id="svCopyMsg">Copy message</button></div>
-    </div>
-  </div>
-  <div class="svrow">
     <span class="plbl">Scope</span>
     <div class="seg" role="group" aria-label="Scope">
       <button id="svScE" aria-pressed="true">Entire project</button>
@@ -250,6 +238,14 @@ try{
   <div class="svrow">
     <span class="plbl">Pickup</span>
     <div class="svlockers" id="svPick"></div>
+  </div>
+  <div class="svrow">
+    <span class="plbl">Messages</span>
+    <div class="svbtns" id="svQuick"></div>
+  </div>
+  <div class="svrow">
+    <span class="plbl">Compose</span>
+    <div class="svbtns" id="svCompose"></div>
   </div>
   <div id="svEmpty" hidden>No message data found</div>
 </div>
@@ -345,7 +341,7 @@ try{
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.20';
+var VERSION = '1.21';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -593,7 +589,7 @@ var TEMPLATES = [
 'Photo directions: {{link:asPickupGuide|Aggie Square pickup guide}}\n\n' +
 '{signoff}' },
   /* -------- Drop-off -------- */
-  { id:'dropoff_as', group:'Pick-up/Drop-off', site:'as', title:'Drop-off instructions',
+  { id:'dropoff_as', quick:true, group:'Pick-up/Drop-off', site:'as', title:'Drop-off instructions',
     fields:[],
     text:
 '{greeting}\n\n' +
@@ -602,7 +598,7 @@ var TEMPLATES = [
 'Then reply to this email with the locker number and the code you set, and we\u2019ll retrieve it.\n\n' +
 'Photo directions from the front entrance: {{link:asDropoffGuide|Aggie Square drop-off guide}}\n\n' +
 '{signoff}' },
-  { id:'dropoff_davis', group:'Pick-up/Drop-off', site:'davis', title:'Drop-off instructions',
+  { id:'dropoff_davis', quick:true, group:'Pick-up/Drop-off', site:'davis', title:'Drop-off instructions',
     fields:[],
     text:
 '{greeting}\n\n' +
@@ -618,7 +614,7 @@ var TEMPLATES = [
 '- Sacramento: Room 1730, Aggie Square Building, {asAddress}\n\n' +
 'Just reply with whichever is more convenient, and we\u2019ll send pickup instructions for that site when it\u2019s ready.\n\n{signoff}' },
   /* -------- Directions -------- */
-  { id:'dir_davis', group:'Directions', site:'davis', title:'Visiting us',
+  { id:'dir_davis', quick:true, group:'Directions', site:'davis', title:'Visiting us',
     fields:[],
     text:
 '{greeting}\n\n' +
@@ -626,7 +622,7 @@ var TEMPLATES = [
 'When you arrive, call us at {davisPhone} from the south entry doors and we\u2019ll meet and escort you. Alternatively, the far-right door at the front of the building is unlocked during business hours \u2014 come in and make your way to Room 1703.\n\n' +
 'An annotated parking map: {{link:davisDirections|Find Us \u2014 Davis}}\n\n' +
 '{signoff}' },
-  { id:'dir_as', group:'Directions', site:'as', title:'Visiting us',
+  { id:'dir_as', quick:true, group:'Directions', site:'as', title:'Visiting us',
     fields:[],
     text:
 '{greeting}\n\n' +
@@ -635,7 +631,7 @@ var TEMPLATES = [
 'If you\u2019re coming from Davis, the Causeway Connection is a zero-emission bus that runs between Davis and the Sacramento campus.\n\n' +
 'An annotated map with parking and entrances: {{link:asDirections|Find Us \u2014 Aggie Square}}\n\n' +
 '{signoff}' },
-  { id:'dir_both', group:'Directions', site:'unknown', title:'Our locations',
+  { id:'dir_both', quick:true, group:'Directions', site:'unknown', title:'Our locations',
     fields:[],
     text:
 '{greeting}\n\nWe operate from two locations:\n' +
@@ -661,14 +657,14 @@ var TEMPLATES = [
     text:
 '{greeting}\n\nWe\u2019d like to set up a time to discuss your project{projectRef}. {askLine} {platformLine}\n\n' +
 'If that doesn\u2019t work, just reply with a few windows that do and we\u2019ll make one fit.\n\n{signoff}' },
-  { id:'appt_request', group:'Appointment', site:'any', title:'Request availability',
+  { id:'appt_request', quick:true, group:'Appointment', site:'any', title:'Request availability',
     fields:[{k:'platform',label:'Platform',type:'seg',def:'choice',
              options:[['inperson','In person'],['zoom','Zoom'],['phone','Phone'],['choice','Client choice']]}],
     tokens:function(v,c){ return { platformLine: platformLine(v.platform, c) }; },
     text:
 '{greeting}\n\nWe\u2019d like to set up a time to discuss your project{projectRef}. Could you reply with a few dates and times that work for you over the next week or so? We\u2019ll confirm the best fit. {platformLine}\n\n{signoff}' },
   /* -------- Job status -------- */
-  { id:'received', group:'Job status', site:'any', title:'Request received',
+  { id:'received', quick:true, group:'Job status', site:'any', title:'Request received',
     fields:[{k:'eta',label:'Est. turnaround',type:'text',ph:'e.g. 5\u20137 business days'}],
     tokens:function(v,c){ return {
       etaLine: v.eta ? ('Our current estimated turnaround is ' + v.eta + '.')
@@ -697,7 +693,7 @@ var TEMPLATES = [
     text:
 '{greeting}\n\nYour quote{forProject} is ready: {amount}{validFor}.\n\n{quoteBlock}\n\n' +
 'To approve and start work, simply reply to this email with your confirmation. {acctPrompt}\n\n{acctBlock}\n\n{signoff}' },
-  { id:'docusign', group:'Job status', site:'any', tier:'external', title:'Estimate sent (DocuSign)',
+  { id:'docusign', quick:true, group:'Job status', site:'any', tier:'external', title:'Estimate sent (DocuSign)',
     fields:[{k:'amount',label:'Estimate total ($)',type:'text',ph:'e.g. 425.00'},
             {k:'valid',label:'Valid for',type:'text',ph:'e.g. 30 days'}],
     tokens:function(v){ return {
@@ -721,7 +717,7 @@ var TEMPLATES = [
     text:
 '{greeting}\n\nYour project{projectRef} is currently on hold \u2014 we need one thing from you before we can continue:\n\n{reasonLine}\n\n' +
 'Reply to this email and we\u2019ll pick the job right back up. Nothing is lost \u2014 it\u2019s simply paused in our queue.\n\n{signoff}' },
-  { id:'supplies', group:'Job status', site:'any', title:'Supplies on order',
+  { id:'supplies', quick:true, group:'Job status', site:'any', title:'Supplies on order',
     fields:[{k:'eta',label:'Expected arrival',type:'text',ph:'e.g. week of 7/14'},
             {k:'tbd',label:'Arrival TBD',type:'check',disables:'eta'}],
     tokens:function(v){ return {
@@ -755,7 +751,7 @@ var TEMPLATES = [
     }; },
     text:
 '{greeting}\n\nYour project{projectRef} has shipped via {carrier}.\n\n{trackingLine}\n\n{signoff}' },
-  { id:'overdue', group:'Job status', site:'any', title:'Pickup reminder',
+  { id:'overdue', quick:true, group:'Job status', site:'any', title:'Pickup reminder',
     fields:[{k:'since',label:'Ready since',type:'text',ph:'e.g. June 12'},
             {k:'dispose',label:'Hold until (optional)',type:'text',ph:'e.g. July 31'}],
     tokens:function(v){ return {
@@ -766,7 +762,7 @@ var TEMPLATES = [
     text:
 '{greeting}\n\nA friendly reminder that your completed project{projectRef} has been ready for pickup{sinceClause}.\n\n{holdLine}\n\n' +
 'If the original pickup instructions are buried in your inbox, just reply and we\u2019ll resend them.\n\n{signoff}' },
-  { id:'done_fb', group:'Job status', site:'any', title:'Complete + feedback',
+  { id:'done_fb', quick:true, group:'Job status', site:'any', title:'Complete + feedback',
     fields:[],
     tokens:function(v,c){ return {
       deptThanks: c.dept ? (' and the ' + c.dept + ' team') : ''
@@ -776,7 +772,7 @@ var TEMPLATES = [
 'If you have two minutes, we\u2019d genuinely appreciate your feedback \u2014 it helps us improve and demonstrates the facility\u2019s impact: {{link:feedbackForm|quick survey}}\n\n' +
 'We\u2019d love to support your next project, too.\n\n{signoff}' },
   /* -------- Admin -------- */
-  { id:'welcome', group:'Admin', site:'any', title:'New client welcome',
+  { id:'welcome', quick:true, group:'Admin', site:'any', title:'New client welcome',
     fields:[],
     tokens:function(v,c){
       var ext = (state.tier === 'external');
@@ -1646,49 +1642,52 @@ function initSummary(){
   function defaultPickId(){
     return (site === 'as') ? 'pickup_as' : (site === 'davis' ? 'pickup_davis' : 'ask_location');
   }
-  function buildSvTplOptions(){
-    var sel = $('#svTpl'); sel.innerHTML = '';
-    var groups = [];
-    TEMPLATES.forEach(function(t){ if(groups.indexOf(t.group) === -1) groups.push(t.group); });
-    groups.forEach(function(g){
-      var list = TEMPLATES.filter(function(t){
-        return t.group === g && (t.site === 'any' || t.site === site) && (!t.tier || t.tier === state.tier);
-      });
-      if(!list.length) return;
-      var og = document.createElement('optgroup'); og.label = g;
-      list.forEach(function(t){
-        var o = document.createElement('option'); o.value = t.id; o.textContent = effectiveTitle(t);
-        og.appendChild(o);
-      });
-      sel.appendChild(og);
+  var PICKUP_FAMILY = { pickup_as:1, pickup_davis:1, pickup_radonc:1, ask_location:1, psnip:1 };
+  function visibleTemplates(){
+    return TEMPLATES.filter(function(t){
+      return (t.site === 'any' || t.site === site) && (!t.tier || t.tier === state.tier) && !PICKUP_FAMILY[t.id];
     });
   }
-  function selectSvTpl(id){
-    var t = TEMPLATES.find(function(x){ return x.id === id; });
-    if(!t){ id = defaultPickId(); t = TEMPLATES.find(function(x){ return x.id === id; }); }
-    state.tpl = id;
-    $('#svTpl').value = id;
-    state.vals = {};
-    if(t) t.fields.forEach(function(f){ if(f.def) state.vals[f.k] = f.def; });
-    var isPickup = (id === defaultPickId());
-    // pickup default: tiles + scope rows; anything else: compact fields + copy
-    $('#svFieldsRow').hidden = isPickup;
-    var rows = document.querySelectorAll('#summaryView .svrow');
-    rows.forEach(function(r){
-      var lbl = r.querySelector('.plbl') ? r.querySelector('.plbl').textContent : '';
-      if(lbl === 'Scope' || lbl === 'Pickup') r.style.display = isPickup ? '' : 'none';
+  function openComposerAt(tplId){
+    var dstr = encodeURIComponent(getParam('d') || '');
+    var url = SELF + '?view=editor&d=' + dstr + '&tpl=' + encodeURIComponent(tplId) +
+              '&site=' + encodeURIComponent(site) + '&scope=' + encodeURIComponent(svScope);
+    try{ t.modal({ url: url, fullscreen: false, height: 980, title: '', accentColor: '#242528' }); }
+    catch(e){ try{ window.open(url, '_blank'); }catch(e2){} }
+  }
+  function renderMsgRows(){
+    var q = $('#svQuick'), c = $('#svCompose');
+    q.innerHTML = ''; c.innerHTML = '';
+    visibleTemplates().forEach(function(tt){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
+      if(tt.quick){
+        b.textContent = effectiveTitle(tt);
+        b.title = 'Copy this message';
+        b.onclick = function(){
+          var vals = {};
+          tt.fields.forEach(function(f){ if(f.def) vals[f.k] = f.def; });
+          copyTemplate(tt.id, vals, b);
+        };
+        q.appendChild(b);
+      } else {
+        b.className = 'btn more';
+        b.textContent = effectiveTitle(tt) + '\u2026';
+        b.title = 'Needs details \u2014 opens the composer at this message';
+        b.onclick = function(){ openComposerAt(tt.id); };
+        c.appendChild(b);
+      }
     });
-    if(isPickup){ state.vals.scope = svScope; state.vals.handoff = 'box'; renderPickRow(); }
-    else buildFields('#svFields');
-    resize();
+    if(!q.childNodes.length){ var n1 = document.createElement('span'); n1.className='none'; n1.textContent='\u2014'; q.appendChild(n1); }
+    if(!c.childNodes.length){ var n2 = document.createElement('span'); n2.className='none'; n2.textContent='\u2014'; c.appendChild(n2); }
   }
   function setSvSite(x){
     site = x;
     $('#svDavis').setAttribute('aria-pressed', x === 'davis' ? 'true' : 'false');
     $('#svAS').setAttribute('aria-pressed', x === 'as' ? 'true' : 'false');
     $('#svUnk').setAttribute('aria-pressed', x === 'unknown' ? 'true' : 'false');
-    buildSvTplOptions();
-    selectSvTpl(defaultPickId());
+    state.tpl = null; state.vals = { scope: svScope, handoff:'box' };
+    renderPickRow();
+    renderMsgRows();
   }
   function setSvSignoff(mode){
     state.signoff = mode;
@@ -1707,10 +1706,7 @@ function initSummary(){
     $('#svScE').setAttribute('aria-pressed', x === 'complete' ? 'true' : 'false');
     $('#svScP').setAttribute('aria-pressed', x === 'partial' ? 'true' : 'false');
   }
-  $('#svTpl').onchange = function(){ selectSvTpl(this.value); };
-  $('#svCopyMsg').onclick = function(){
-    copyTemplate(state.tpl, state.vals, $('#svCopyMsg'));
-  };
+
   $('#svScE').onclick = function(){ setSvScope('complete'); };
   $('#svScP').onclick = function(){ setSvScope('partial'); };
 
@@ -1788,6 +1784,17 @@ function initSummary(){
   }
   [400,1200,2400].forEach(function(ms){ setTimeout(resize, ms); });
 }
+function applyEditorParams(){
+  var siteP = getParam('site'), tplP = getParam('tpl'), scopeP = getParam('scope');
+  if(siteP === 'davis' || siteP === 'as' || siteP === 'unknown') setSite(siteP, false);
+  if(tplP && TEMPLATES.some(function(x){ return x.id === tplP; })){
+    selectTemplate(tplP);
+    if(scopeP === 'partial' || scopeP === 'complete'){
+      var t = TEMPLATES.find(function(x){ return x.id === tplP; });
+      if(t.fields.some(function(f){ return f.k === 'scope'; })){ state.vals.scope = scopeP; buildFields(); renderPreview(); }
+    }
+  }
+}
 function initEditor(){
   try{ _t = window.TrelloPowerUp.iframe(); }catch(e){ _t = null; }
   if(_t){ applyTheme(_t); [200,800,2000].forEach(function(ms){ setTimeout(function(){ applyTheme(_t); }, ms); }); }
@@ -1805,6 +1812,7 @@ function initEditor(){
     if(dp.l && typeof dp.l === 'object') LINKS_STORE = dp.l;
     if(dp.m) state.memberFirst = dp.m;
     hydrate(dp.n, dp.d);
+    applyEditorParams();
   }
   else if(_t){                                 // fallback: iframe channel
     Promise.all([
@@ -1817,6 +1825,7 @@ function initEditor(){
       if(r[2] && typeof r[2] === 'object') LINKS_STORE = r[2];
       state.memberFirst = ((r[3] && r[3].fullName) || '').split(/\s+/)[0] || '';
       hydrate(r[0].name, r[0].desc);
+      applyEditorParams();
     }, function(){ hydrate('',''); });
   } else hydrate('','');
   setTimeout(function(){ try{ document.body.setAttribute('tabindex','-1'); document.body.focus({preventScroll:true}); }catch(e){} }, 120);
