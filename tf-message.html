@@ -195,9 +195,11 @@ try{
   #summaryView .lk.ok{border-color:rgba(75,206,151,.7);outline:2px solid rgba(75,206,151,.5)}
   #summaryView .lk.ronc{width:auto;padding:4px 9px 3px}
   #summaryView .lk.ronc .n{font-size:11px}
-  #summaryView .svbtns .btn{font-size:11.5px;padding:4px 11px}
-  #summaryView .svbtns .btn.more{border-style:dashed;color:var(--dim)}
-  #summaryView .svbtns .btn.more:hover{color:var(--text)}
+  #svTpl{font:inherit;font-size:12px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;max-width:100%;flex:1 1 220px;min-width:0}
+  #svTpl:focus{outline:none;border-color:var(--blue)}
+  #svAct{font-size:11.5px;padding:5px 12px;white-space:nowrap}
+  #svAct.more{background:transparent;color:var(--dim);border:1px dashed var(--line)}
+  #svAct.more:hover{color:var(--text)}
   #summaryView.svempty .svrow{display:none}
   #summaryView.svempty{background:transparent;border-radius:0;padding:6px 2px}
   #svEmpty{font-size:12px;color:var(--dimmer);font-style:normal}
@@ -209,6 +211,10 @@ try{
 <body>
 
 <div id="summaryView">
+  <div class="svrow">
+    <span class="plbl">Copy</span>
+    <div class="svbtns" id="svCopyRow"></div>
+  </div>
   <div class="svrow">
     <span class="plbl">Location</span>
     <div class="seg" role="group" aria-label="Location">
@@ -225,27 +231,20 @@ try{
     </div>
   </div>
   <div class="svrow">
-    <span class="plbl">Copy</span>
-    <div class="svbtns" id="svCopyRow"></div>
+    <span class="plbl">Message</span>
+    <select id="svTpl" aria-label="Message type"></select>
+    <button class="btn primary" id="svAct" hidden>Copy message</button>
   </div>
-  <div class="svrow">
+  <div class="svrow" id="svScopeRow">
     <span class="plbl">Scope</span>
     <div class="seg" role="group" aria-label="Scope">
       <button id="svScE" aria-pressed="true">Entire project</button>
       <button id="svScP" aria-pressed="false">Partial delivery</button>
     </div>
   </div>
-  <div class="svrow">
+  <div class="svrow" id="svPickRow">
     <span class="plbl">Pickup</span>
     <div class="svlockers" id="svPick"></div>
-  </div>
-  <div class="svrow">
-    <span class="plbl">Messages</span>
-    <div class="svbtns" id="svQuick"></div>
-  </div>
-  <div class="svrow">
-    <span class="plbl">Compose</span>
-    <div class="svbtns" id="svCompose"></div>
   </div>
   <div id="svEmpty" hidden>No message data found</div>
 </div>
@@ -341,7 +340,7 @@ try{
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.21';
+var VERSION = '1.23';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -490,7 +489,7 @@ var TOKEN_HELP = {
 function platformLine(platform, c){
   if(platform === 'inperson'){
     if(state.site === 'unknown'){
-      return 'We can meet at either our Davis facility (Room 1703 GBSF) or at Aggie Square in Sacramento (Room 1730) \u2014 let us know which is more convenient.';
+      return 'We can meet at either our Davis facility (Room 1703 GBSF) or at Aggie Square in Sacramento (Room 1730). Let us know which is more convenient.';
     }
     return 'We\u2019d meet at our ' + (state.site === 'as'
       ? ('Aggie Square facility (' + F.asAddress + ')')
@@ -498,7 +497,7 @@ function platformLine(platform, c){
   }
   if(platform === 'zoom') return 'We\u2019ll set it up as a Zoom meeting and send you a link.';
   if(platform === 'phone') return 'We\u2019ll give you a call' + (c.phone ? (' at ' + c.phone) : '') + '.';
-  return 'We\u2019re happy to meet in person, over Zoom, or by phone \u2014 whatever\u2019s easiest for you.';
+  return 'We\u2019re happy to meet in person, over Zoom, or by phone, whatever\u2019s easiest for you.';
 }
 function baseTokens(v, c){
   var partial = (v.scope === 'partial');
@@ -508,8 +507,8 @@ function baseTokens(v, c){
       (state.signoff === 'personal'
         ? ((state.memberFirst ? (state.memberFirst + '\n') : '') + F.orgName)
         : ('The ' + F.orgName + ' Team')),
-    ready: partial ? 'Good news \u2014 part of your project is ready for pickup'
-                   : 'Good news \u2014 your project is complete and ready for pickup',
+    ready: partial ? 'Good news: part of your project is ready for pickup'
+                   : 'Good news: your project is complete and ready for pickup',
     partialNote: partial ? 'The remainder is still in progress, and we\u2019ll send another notice as soon as it\u2019s complete.' : '',
     locker: v.locker || '{{miss:locker #}}',
     code: CONFIG.LOCKER_CODES[v.locker] || '{{miss:code}}',
@@ -517,7 +516,7 @@ function baseTokens(v, c){
     teamCode: F.teamBoxCode,
     siteFacility: (state.site === 'as') ? ('Aggie Square facility (' + F.asAddress + ')')
                 : (state.site === 'davis') ? ('Davis facility (' + F.davisAddress + ')')
-                : 'facility (Davis or Aggie Square \u2014 we\u2019ll confirm which)',
+                : 'facility (Davis or Aggie Square; we\u2019ll confirm which)',
     asAddress: F.asAddress, asHours: F.asHours, asGarage: F.asGarage,
     davisAddress: F.davisAddress, davisPhone: F.davisPhone,
     project: c.project || '', firstName: c.firstName || '', clientName: c.clientName || '',
@@ -552,7 +551,7 @@ var TEMPLATES = [
 '{signoff}',
       inperson: '{greeting}\n\n{ready}. {inpersonReason} {partialNote}\n\n' +
 'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{signoff}',
-      delivery: '{greeting}\n\n{ready}. To wrap it up, we\u2019d like to schedule a delivery \u2014 and we can handle installation on-site if needed. {partialNote}\n\n' +
+      delivery: '{greeting}\n\n{ready}. To wrap it up, we\u2019d like to schedule a delivery, and we can handle installation on-site if needed. {partialNote}\n\n' +
 'Could you reply with a few dates and times that work, along with the delivery address (building and room)? We\u2019ll get it on the calendar.\n\n{signoff}'
     } },
   { id:'pickup_davis', group:'Pick-up/Drop-off', site:'davis', title:'Ready for pickup',
@@ -571,20 +570,20 @@ var TEMPLATES = [
       box:
 '{greeting}\n\n' +
 '{ready}. We have placed it in our secure pickup box at the rear of GBSF ({davisAddress}), in the loading-dock area on the west side of the building. The box is outside, so it is accessible 24 hours a day. {partialNote}\n\n' +
-'To open the box:\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. The box will open \u2014 please take only your items and close the lid.\n\n' +
+'To open the box:\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. The box will open. Please take only your items and close the lid.\n\n' +
 'If the box does not accept your input on the first try, simply enter the code again ({teamCode}#).\n\n' +
 'Photos and a map of the box location: {{link:davisPickupGuide|Davis pickup guide}}\n\n' +
 '{signoff}',
       inperson: '{greeting}\n\n{ready}. {inpersonReason} {partialNote}\n\n' +
 'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{signoff}',
-      delivery: '{greeting}\n\n{ready}. To wrap it up, we\u2019d like to schedule a delivery \u2014 and we can handle installation on-site if needed. {partialNote}\n\n' +
+      delivery: '{greeting}\n\n{ready}. To wrap it up, we\u2019d like to schedule a delivery, and we can handle installation on-site if needed. {partialNote}\n\n' +
 'Could you reply with a few dates and times that work, along with the delivery address (building and room)? We\u2019ll get it on the calendar.\n\n{signoff}'
     } },
   { id:'pickup_radonc', group:'Pick-up/Drop-off', site:'as', title:'RadOnc collection point',
     fields:[SCOPE_FIELD],
     text:
 '{greeting}\n\n' +
-'{ready}. It\u2019s waiting at the Radiation Oncology Collection Point \u2014 the top-left green locker across from our facility (Room 1730) in the Aggie Square Building, {asAddress}. The building is accessible {asHours}. {partialNote}\n\n' +
+'{ready}. It\u2019s waiting at the Radiation Oncology Collection Point, the top-left green locker across from our facility (Room 1730) in the Aggie Square Building, {asAddress}. The building is accessible {asHours}. {partialNote}\n\n' +
 'To open the locker:\n1. Press C to wake the keypad.\n2. Enter the access code: {radoncCode}\n3. Press the key button. The locker will unlock.\n\n' +
 'Photo directions: {{link:asPickupGuide|Aggie Square pickup guide}}\n\n' +
 '{signoff}' },
@@ -594,7 +593,7 @@ var TEMPLATES = [
     text:
 '{greeting}\n\n' +
 'You can drop your item off any weekday, {asHours}, using the green lockers across from our facility (Room 1730) in the Aggie Square Building at {asAddress}.\n\n' +
-'Select any unlocked locker on the right (numbered) bank, place your item inside, and set your own code:\n1. Press C to wake the keypad.\n2. Enter any 4-digit code of your choosing.\n3. Press the key button \u2014 the locker is now locked.\n\n' +
+'Select any unlocked locker on the right (numbered) bank, place your item inside, and set your own code:\n1. Press C to wake the keypad.\n2. Enter any 4-digit code of your choosing.\n3. Press the key button. The locker is now locked.\n\n' +
 'Then reply to this email with the locker number and the code you set, and we\u2019ll retrieve it.\n\n' +
 'Photo directions from the front entrance: {{link:asDropoffGuide|Aggie Square drop-off guide}}\n\n' +
 '{signoff}' },
@@ -603,7 +602,7 @@ var TEMPLATES = [
     text:
 '{greeting}\n\n' +
 'You can drop your item off any time using our secure box at the rear of GBSF ({davisAddress}), in the loading-dock area on the west side of the building. The box is outside, so it is accessible 24 hours a day.\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. Place your item inside and close the lid.\n\n' +
-'Please reply to this email once you\u2019ve dropped off so we know to collect it. During business hours you\u2019re also welcome to bring items directly to Room 1703 \u2014 call us at {davisPhone} from the south entry doors and we\u2019ll meet you.\n\n' +
+'Please reply to this email once you\u2019ve dropped off so we know to collect it. During business hours you\u2019re also welcome to bring items directly to Room 1703; call us at {davisPhone} from the south entry doors and we\u2019ll meet you.\n\n' +
 'Photos and a map of the box location: {{link:davisPickupGuide|Davis box guide}}\n\n' +
 '{signoff}' },
   { id:'ask_location', group:'Pick-up/Drop-off', site:'unknown', title:'Ask collection preference',
@@ -619,24 +618,24 @@ var TEMPLATES = [
     text:
 '{greeting}\n\n' +
 'We\u2019re located at {davisAddress}. Two parking lots sit adjacent to the building: Lot 53 (opens to the loading dock at the back, with free 30-minute spaces) and Lot 56A (metered, shared with Aggie Stadium).\n\n' +
-'When you arrive, call us at {davisPhone} from the south entry doors and we\u2019ll meet and escort you. Alternatively, the far-right door at the front of the building is unlocked during business hours \u2014 come in and make your way to Room 1703.\n\n' +
-'An annotated parking map: {{link:davisDirections|Find Us \u2014 Davis}}\n\n' +
+'When you arrive, call us at {davisPhone} from the south entry doors and we\u2019ll meet and escort you. Alternatively, the far-right door at the front of the building is unlocked during business hours; come in and make your way to Room 1703.\n\n' +
+'An annotated parking map: {{link:davisDirections|Find Us: Davis}}\n\n' +
 '{signoff}' },
   { id:'dir_as', quick:true, group:'Directions', site:'as', title:'Visiting us',
     fields:[],
     text:
 '{greeting}\n\n' +
 'We\u2019re in the Aggie Square Building at {asAddress}. For easiest access, park in the {asGarage} (entrances off 2nd Ave or Stockton Blvd). UC Davis affiliates should use the HonkMobile app and pay ahead of arrival for a discounted rate; visitors can pay at the lot ($2 per 15 min, $20/day max).\n\n' +
-'From the garage, head to the east entrance of the Aggie Square Building. The building is open {asHours} \u2014 if you\u2019re arriving outside those hours, let us know in advance so someone can open the door. We\u2019re in Room 1730, across from the green lockers.\n\n' +
+'From the garage, head to the east entrance of the Aggie Square Building. The building is open {asHours}. If you\u2019re arriving outside those hours, let us know in advance so someone can open the door. We\u2019re in Room 1730, across from the green lockers.\n\n' +
 'If you\u2019re coming from Davis, the Causeway Connection is a zero-emission bus that runs between Davis and the Sacramento campus.\n\n' +
-'An annotated map with parking and entrances: {{link:asDirections|Find Us \u2014 Aggie Square}}\n\n' +
+'An annotated map with parking and entrances: {{link:asDirections|Find Us: Aggie Square}}\n\n' +
 '{signoff}' },
   { id:'dir_both', quick:true, group:'Directions', site:'unknown', title:'Our locations',
     fields:[],
     text:
 '{greeting}\n\nWe operate from two locations:\n' +
-'- Davis: Room 1703 (GBSF), {davisAddress} \u2014 directions: {{link:davisDirections|Find Us \u2014 Davis}}\n' +
-'- Sacramento: Room 1730, Aggie Square Building, {asAddress} \u2014 directions: {{link:asDirections|Find Us \u2014 Aggie Square}}\n\n' +
+'- Davis: Room 1703 (GBSF), {davisAddress}. Directions: {{link:davisDirections|Find Us: Davis}}\n' +
+'- Sacramento: Room 1730, Aggie Square Building, {asAddress}. Directions: {{link:asDirections|Find Us: Aggie Square}}\n\n' +
 'Let us know which works better for you, and we\u2019re happy to share parking and arrival details.\n\n{signoff}' },
   /* -------- Appointment -------- */
   { id:'appt_propose', group:'Appointment', site:'any', title:'Propose a time',
@@ -649,7 +648,7 @@ var TEMPLATES = [
       var when = v.when || '{{miss:proposed time}}';
       return {
         askLine: (v.timeMode === 'range')
-          ? ('We\u2019re available ' + when + ' \u2014 would a time in that window work for you? Let us know what fits best.')
+          ? ('We\u2019re available ' + when + '. Would a time in that window work for you? Let us know what fits best.')
           : ('Would ' + when + ' work for you?'),
         platformLine: platformLine(v.platform, c)
       };
@@ -670,13 +669,13 @@ var TEMPLATES = [
       etaLine: v.eta ? ('Our current estimated turnaround is ' + v.eta + '.')
                      : 'We\u2019ll follow up shortly with an estimated turnaround.',
       authLine: (state.tier === 'external')
-        ? 'Because this is an external service request, we\u2019ll prepare an estimate after reviewing your submission and route it to you via DocuSign \u2014 work begins as soon as the document is signed.'
+        ? 'Because this is an external service request, we\u2019ll prepare an estimate after reviewing your submission and route it to you via DocuSign. Work begins as soon as the document is signed.'
         : ((c.auth === 'quote') ? 'You asked us to send a quote before proceeding, so you\u2019ll hear from us with pricing before any work begins.' :
            (c.auth === 'auto')  ? ('You\u2019ve authorized us to proceed within your stated budget' + (c.budget ? (' of $' + c.budget) : '') + ', so we\u2019ll get started and keep you posted.') :
            'We\u2019ll confirm scope and billing details before work begins.')
     }; },
     text:
-'{greeting}\n\nThanks for your submission{forProject} \u2014 it\u2019s in our queue and our team is reviewing it now. {etaLine}\n\n{authLine}\n\n{signoff}' },
+'{greeting}\n\nThanks for your submission{forProject}. It\u2019s in our queue and our team is reviewing it now. {etaLine}\n\n{authLine}\n\n{signoff}' },
   { id:'quote', group:'Job status', site:'any', title:'Quote ready',
     fields:[{k:'quote',label:'Quote summary (from Recharge tool)',type:'quote',ph:'Paste the full quote text here \u2014 the total auto-fills below'},
             {k:'amount',label:'Quote total ($)',type:'text',ph:'e.g. 425.00'},
@@ -685,8 +684,8 @@ var TEMPLATES = [
       amount: v.amount ? ('$' + v.amount) : '{{miss:amount}}',
       validFor: v.valid ? (', valid for ' + v.valid) : '',
       acctPrompt: (state.tier === 'external')
-        ? 'We\u2019ll route the estimate to you via DocuSign \u2014 once it\u2019s signed, we\u2019ll get started right away.'
-        : (c.acct ? 'We have the following Aggie Enterprise account on file for billing \u2014 please confirm it is correct:'
+        ? 'We\u2019ll route the estimate to you via DocuSign. Once it\u2019s signed, we\u2019ll get started right away.'
+        : (c.acct ? 'We have the following Aggie Enterprise account on file for billing; please confirm it is correct:'
                   : 'Please also include the Aggie Enterprise account string (or PO) we should bill.'),
       acctBlock: (state.tier === 'external') ? '' : (c.acct || '')
     }; },
@@ -701,22 +700,22 @@ var TEMPLATES = [
       validClause: v.valid ? (' The estimate is valid for ' + v.valid + '.') : ''
     }; },
     text:
-'{greeting}\n\nThank you for your service request{projectRef}. We\u2019ve completed our review and prepared an estimate{amountClause}. You\u2019ll receive it shortly via DocuSign \u2014 once the document is signed, we\u2019ll begin work right away.{validClause}\n\n' +
+'{greeting}\n\nThank you for your service request{projectRef}. We\u2019ve completed our review and prepared an estimate{amountClause}. You\u2019ll receive it shortly via DocuSign. Once the document is signed, we\u2019ll begin work right away.{validClause}\n\n' +
 'If anything in the estimate needs discussion, just reply to this email.\n\n{signoff}' },
-  { id:'hold', group:'Job status', site:'any', title:'On hold \u2014 need info',
+  { id:'hold', group:'Job status', site:'any', title:'On hold (need info)',
     fields:[{k:'reason',label:'Reason',type:'select',options:[
-        'File issue \u2014 the model needs repair before it can be produced',
-        'Billing \u2014 we need a valid account string before proceeding',
-        'Material decision \u2014 we need your material selection to proceed',
-        'Imaging \u2014 the DICOM series we received is incomplete',
-        'Supplies \u2014 materials are on order and we\u2019re awaiting delivery',
+        'File issue: the model needs repair before it can be produced',
+        'Billing: we need a valid account string before proceeding',
+        'Material decision: we need your material selection to proceed',
+        'Imaging: the DICOM series we received is incomplete',
+        'Supplies: materials are on order and we\u2019re awaiting delivery',
         'Other (describe below)'
       ]},
       {k:'detail',label:'Details (optional)',type:'textarea',ph:'Anything specific the client should send or decide'}],
     tokens:function(v){ return { reasonLine: (v.reason || '{{miss:reason}}') + (v.detail ? (' ' + v.detail) : '') }; },
     text:
-'{greeting}\n\nYour project{projectRef} is currently on hold \u2014 we need one thing from you before we can continue:\n\n{reasonLine}\n\n' +
-'Reply to this email and we\u2019ll pick the job right back up. Nothing is lost \u2014 it\u2019s simply paused in our queue.\n\n{signoff}' },
+'{greeting}\n\nYour project{projectRef} is currently on hold. We need one thing from you before we can continue:\n\n{reasonLine}\n\n' +
+'Reply to this email and we\u2019ll pick the job right back up. Nothing is lost; it\u2019s simply paused in our queue.\n\n{signoff}' },
   { id:'supplies', quick:true, group:'Job status', site:'any', title:'Supplies on order',
     fields:[{k:'eta',label:'Expected arrival',type:'text',ph:'e.g. week of 7/14'},
             {k:'tbd',label:'Arrival TBD',type:'check',disables:'eta'}],
@@ -728,7 +727,7 @@ var TEMPLATES = [
     }; },
     text:
 '{greeting}\n\nA quick status update on your project{projectRef}: the materials we need are on order, and the job is paused until they arrive. {suppliesEta}\n\n' +
-'No action is needed on your end \u2014 we\u2019ll pick the work right back up the moment the supplies land, and we\u2019ll keep you posted.\n\n{signoff}' },
+'No action is needed on your end. We\u2019ll pick the work right back up the moment the supplies land, and we\u2019ll keep you posted.\n\n{signoff}' },
   { id:'delay', group:'Job status', site:'any', title:'Delay notice',
     fields:[{k:'eta',label:'Revised completion',type:'text',ph:'e.g. Friday 7/10'},
             {k:'tbd',label:'Date TBD',type:'check',disables:'eta'},
@@ -736,7 +735,7 @@ var TEMPLATES = [
     tokens:function(v){ return {
       whyClause: v.why ? (' due to ' + v.why) : '',
       etaSentence: v.tbd
-        ? 'We don\u2019t have a firm revised completion date yet \u2014 we\u2019ll follow up with a new estimate as soon as we do, and we\u2019ll notify you the moment your project is ready.'
+        ? 'We don\u2019t have a firm revised completion date yet, but we\u2019ll follow up with a new estimate as soon as we do, and we\u2019ll notify you the moment your project is ready.'
         : ('Our revised completion estimate is ' + (v.eta || '{{miss:revised date}}') + '. We\u2019ll notify you the moment it\u2019s ready, and we appreciate your patience.')
     }; },
     text:
@@ -756,7 +755,7 @@ var TEMPLATES = [
             {k:'dispose',label:'Hold until (optional)',type:'text',ph:'e.g. July 31'}],
     tokens:function(v){ return {
       sinceClause: v.since ? (' since ' + v.since) : '',
-      holdLine: v.dispose ? ('Locker space is limited, so we can hold it until ' + v.dispose + ' \u2014 after that we\u2019ll move it into storage and pickup will require coordinating with staff.')
+      holdLine: v.dispose ? ('Locker space is limited, so we can hold it until ' + v.dispose + '. After that we\u2019ll move it into storage and pickup will require coordinating with staff.')
                           : 'Locker space is limited, so please pick it up at your earliest convenience.'
     }; },
     text:
@@ -769,7 +768,7 @@ var TEMPLATES = [
     }; },
     text:
 '{greeting}\n\nWe hope your project{projectRef} turned out exactly as you needed. It was a pleasure working with you{deptThanks}.\n\n' +
-'If you have two minutes, we\u2019d genuinely appreciate your feedback \u2014 it helps us improve and demonstrates the facility\u2019s impact: {{link:feedbackForm|quick survey}}\n\n' +
+'If you have two minutes, we\u2019d genuinely appreciate your feedback. It helps us improve and demonstrates the facility\u2019s impact: {{link:feedbackForm|quick survey}}\n\n' +
 'We\u2019d love to support your next project, too.\n\n{signoff}' },
   /* -------- Admin -------- */
   { id:'welcome', quick:true, group:'Admin', site:'any', title:'New client welcome',
@@ -779,10 +778,10 @@ var TEMPLATES = [
       return {
         billingLine: ext
           ? 'External clients are billed at our external rates; work begins after a signed estimate, which we route via DocuSign.'
-          : 'Work is billed through the campus recharge system \u2014 for UC Davis clients we bill an Aggie Enterprise account string.',
+          : 'Work is billed through the campus recharge system. For UC Davis clients we bill an Aggie Enterprise account string.',
         startLine: ext
-          ? 'To start a project, submit an external service request here: {{link:extIntakeForm|external service request form}} \u2014 we\u2019ll review it, send an estimate via DocuSign, and begin work once it\u2019s signed.'
-          : 'To start a project, submit a request here: {{link:intakeForm|project intake form}} \u2014 and if you\u2019re not sure what you need, just describe the problem and we\u2019ll schedule a consult.'
+          ? 'To start a project, submit an external service request here: {{link:extIntakeForm|external service request form}}. We\u2019ll review it, send an estimate via DocuSign, and begin work once it\u2019s signed.'
+          : 'To start a project, submit a request here: {{link:intakeForm|project intake form}}. If you\u2019re not sure what you need, just describe the problem and we\u2019ll schedule a consult.'
       };
     },
     text:
@@ -1642,12 +1641,7 @@ function initSummary(){
   function defaultPickId(){
     return (site === 'as') ? 'pickup_as' : (site === 'davis' ? 'pickup_davis' : 'ask_location');
   }
-  var PICKUP_FAMILY = { pickup_as:1, pickup_davis:1, pickup_radonc:1, ask_location:1, psnip:1 };
-  function visibleTemplates(){
-    return TEMPLATES.filter(function(t){
-      return (t.site === 'any' || t.site === site) && (!t.tier || t.tier === state.tier) && !PICKUP_FAMILY[t.id];
-    });
-  }
+  var HIDDEN_IN_PICKER = { psnip:1, pickup_radonc:1 };   // have their own chip / tile
   function openComposerAt(tplId){
     var dstr = encodeURIComponent(getParam('d') || '');
     var url = SELF + '?view=editor&d=' + dstr + '&tpl=' + encodeURIComponent(tplId) +
@@ -1655,39 +1649,60 @@ function initSummary(){
     try{ t.modal({ url: url, fullscreen: false, height: 980, title: '', accentColor: '#242528' }); }
     catch(e){ try{ window.open(url, '_blank'); }catch(e2){} }
   }
-  function renderMsgRows(){
-    var q = $('#svQuick'), c = $('#svCompose');
-    q.innerHTML = ''; c.innerHTML = '';
-    visibleTemplates().forEach(function(tt){
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
-      if(tt.quick){
-        b.textContent = effectiveTitle(tt);
-        b.title = 'Copy this message';
-        b.onclick = function(){
-          var vals = {};
-          tt.fields.forEach(function(f){ if(f.def) vals[f.k] = f.def; });
-          copyTemplate(tt.id, vals, b);
-        };
-        q.appendChild(b);
-      } else {
-        b.className = 'btn more';
-        b.textContent = effectiveTitle(tt) + '\u2026';
-        b.title = 'Needs details \u2014 opens the composer at this message';
-        b.onclick = function(){ openComposerAt(tt.id); };
-        c.appendChild(b);
-      }
+  function buildSvTplOptions(){
+    var sel = $('#svTpl'); sel.innerHTML = '';
+    var groups = [];
+    TEMPLATES.forEach(function(tt){ if(groups.indexOf(tt.group) === -1) groups.push(tt.group); });
+    groups.forEach(function(g){
+      var list = TEMPLATES.filter(function(tt){
+        return tt.group === g && (tt.site === 'any' || tt.site === site) &&
+               (!tt.tier || tt.tier === state.tier) && !HIDDEN_IN_PICKER[tt.id];
+      }).sort(function(a,b){ return effectiveTitle(a).localeCompare(effectiveTitle(b)); });
+      if(!list.length) return;
+      var og = document.createElement('optgroup'); og.label = g;
+      list.forEach(function(tt){
+        var o = document.createElement('option'); o.value = tt.id; o.textContent = effectiveTitle(tt);
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
     });
-    if(!q.childNodes.length){ var n1 = document.createElement('span'); n1.className='none'; n1.textContent='\u2014'; q.appendChild(n1); }
-    if(!c.childNodes.length){ var n2 = document.createElement('span'); n2.className='none'; n2.textContent='\u2014'; c.appendChild(n2); }
+  }
+  function selectSvTpl(id){
+    var tt = TEMPLATES.find(function(x){ return x.id === id; });
+    if(!tt){ id = defaultPickId(); tt = TEMPLATES.find(function(x){ return x.id === id; }); }
+    state.tpl = id;
+    $('#svTpl').value = id;
+    var isPickup = (id === defaultPickId());
+    $('#svScopeRow').style.display = isPickup ? '' : 'none';
+    $('#svPickRow').style.display = isPickup ? '' : 'none';
+    var act = $('#svAct');
+    if(isPickup){ act.hidden = true; }
+    else {
+      act.hidden = false;
+      if(tt.quick){
+        act.className = 'btn primary'; act.textContent = 'Copy message';
+        act.title = 'Copy this message to the clipboard';
+        act.onclick = function(){
+          var vals = {}; tt.fields.forEach(function(f){ if(f.def) vals[f.k] = f.def; });
+          copyTemplate(tt.id, vals, act);
+        };
+      } else {
+        act.className = 'btn more'; act.textContent = 'Open in composer\u2026';
+        act.title = 'This message needs details; opens the composer here';
+        act.onclick = function(){ openComposerAt(tt.id); };
+      }
+    }
+    if(isPickup) renderPickRow();
+    resize();
   }
   function setSvSite(x){
     site = x;
     $('#svDavis').setAttribute('aria-pressed', x === 'davis' ? 'true' : 'false');
     $('#svAS').setAttribute('aria-pressed', x === 'as' ? 'true' : 'false');
     $('#svUnk').setAttribute('aria-pressed', x === 'unknown' ? 'true' : 'false');
-    state.tpl = null; state.vals = { scope: svScope, handoff:'box' };
-    renderPickRow();
-    renderMsgRows();
+    state.vals = { scope: svScope, handoff:'box' };
+    buildSvTplOptions();
+    selectSvTpl(defaultPickId());
   }
   function setSvSignoff(mode){
     state.signoff = mode;
@@ -1709,6 +1724,7 @@ function initSummary(){
 
   $('#svScE').onclick = function(){ setSvScope('complete'); };
   $('#svScP').onclick = function(){ setSvScope('partial'); };
+  $('#svTpl').onchange = function(){ selectSvTpl(this.value); };
 
   function copyBtn(label, display, val){
     var b = document.createElement('button'); b.type = 'button'; b.className = 'cbtn';
