@@ -193,6 +193,12 @@ try{
   #summaryView .lk .n{font-size:13px}
   #summaryView .lk .c{font-size:9px}
   #summaryView .lk.ok{border-color:rgba(75,206,151,.7);outline:2px solid rgba(75,206,151,.5)}
+  #summaryView .lk.ronc{width:auto;padding:4px 9px 3px}
+  #summaryView .lk.ronc .n{font-size:11px}
+  #svTpl{font:inherit;font-size:12px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;max-width:100%}
+  #svTpl:focus{outline:none;border-color:var(--blue)}
+  #svFields .fld input,#svFields .fld select{min-width:110px}
+  #svFields .fld textarea{min-width:200px}
   #summaryView.svempty .svrow{display:none}
   #summaryView.svempty{background:transparent;border-radius:0;padding:6px 2px}
   #svEmpty{font-size:12px;color:var(--dimmer);font-style:normal}
@@ -208,7 +214,7 @@ try{
     <span class="plbl">Location</span>
     <div class="seg" role="group" aria-label="Location">
       <button id="svDavis" aria-pressed="false">Davis</button>
-      <button id="svAS" aria-pressed="false">Aggie Sq</button>
+      <button id="svAS" aria-pressed="false">Aggie Square</button>
       <button id="svUnk" aria-pressed="false">Unknown</button>
     </div>
   </div>
@@ -222,6 +228,17 @@ try{
   <div class="svrow">
     <span class="plbl">Copy</span>
     <div class="svbtns" id="svCopyRow"></div>
+  </div>
+  <div class="svrow">
+    <span class="plbl">Message</span>
+    <select id="svTpl" aria-label="Message type"></select>
+  </div>
+  <div class="svrow" id="svFieldsRow" hidden>
+    <span class="plbl">Details</span>
+    <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:8px">
+      <div class="fields" id="svFields" style="padding:0"></div>
+      <div><button class="btn primary" id="svCopyMsg">Copy message</button></div>
+    </div>
   </div>
   <div class="svrow">
     <span class="plbl">Scope</span>
@@ -282,7 +299,6 @@ try{
     <div class="actions">
       <button class="btn primary" id="copyRich">Copy message</button>
       <button class="btn" id="copyPlain">Copy plain text</button>
-      <button class="btn" id="mailto">Open email draft</button>
       <span class="spacer"></span>
       <button class="btn" id="resetBtn" title="Rebuild the preview from the template, discarding edits">Reset preview</button>
     </div>
@@ -329,7 +345,7 @@ try{
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.19';
+var VERSION = '1.20';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -397,7 +413,13 @@ function parseDesc(desc){
   m = d.match(/Client Description:\s*([\s\S]*?)\s*Services:/);
   if(m) out.clientDescription = m[1].replace(/\s+/g,' ').trim();
   m = d.match(/Purchasing Snippet:\s*([\s\S]+)$/);
-  if(m){ var s = m[1].trim().replace(/^["'\u201c]+|["'\u201d]+$/g,'').trim(); if(s) out.snippet = s; }
+  if(m){
+    var s = m[1].replace(/^["'\u201c]+|["'\u201d]+$/g,'');
+    var sl = s.split('\n');
+    while(sl.length && /^[\s\-_=*\u2014\u2013]*$/.test(sl[0])) sl.shift();   // markdown rules under the heading
+    s = sl.join('\n').trim();
+    if(s) out.snippet = s;
+  }
   var src = out.snippet || d;
   m = src.match(/(?:internal|external) recharge project:\s*(.+)$/m);
   if(m){
@@ -950,9 +972,27 @@ function copyRich(html, text, btn){
         'text/html': new Blob([html], {type:'text/html'}),
         'text/plain': new Blob([text], {type:'text/plain'})
       });
-      navigator.clipboard.write([item]).then(function(){ done(true); }, function(){ copyPlainFallback(text, done); });
+      navigator.clipboard.write([item]).then(function(){ done(true); }, function(){ copyRichFallback(html, text, done); });
       return;
     }
+  }catch(e){}
+  copyRichFallback(html, text, done);
+}
+function copyRichFallback(html, text, done){
+  /* execCommand('copy') on a selected contenteditable keeps text/html on the
+     clipboard (links, lists, bold) even where the async Clipboard API is
+     blocked by iframe permissions \u2014 which is the norm inside Trello. */
+  try{
+    var el = document.createElement('div');
+    el.setAttribute('contenteditable','true');
+    el.style.position = 'fixed'; el.style.left = '-9999px'; el.style.top = '0'; el.style.opacity = '0';
+    el.innerHTML = html;
+    document.body.appendChild(el);
+    var range = document.createRange(); range.selectNodeContents(el);
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    var ok = document.execCommand('copy');
+    sel.removeAllRanges(); document.body.removeChild(el);
+    if(ok){ done(true); return; }
   }catch(e){}
   copyPlainFallback(text, done);
 }
@@ -1092,8 +1132,8 @@ function selectTemplate(id){
   initSettings();
   buildTemplates(); buildFields(); renderPreview();
 }
-function buildFields(){
-  var host = $('#fields'); host.innerHTML = '';
+function buildFields(hostSel){
+  var host = $(hostSel || '#fields'); if(!host) return; host.innerHTML = '';
   var t = TEMPLATES.find(function(x){ return x.id === state.tpl; });
   if(!t || !t.fields.length){ host.hidden = true; return; }
   host.hidden = false;
@@ -1110,7 +1150,7 @@ function buildFields(){
         b.setAttribute('aria-pressed', (state.vals[f.k] === o[0]) ? 'true' : 'false');
         b.onclick = function(){
           state.vals[f.k] = o[0]; state.edited = false;
-          buildFields();
+          buildFields(hostSel);
           renderPreview();
         };
         input.appendChild(b);
@@ -1219,6 +1259,7 @@ function buildFields(){
 function renderPreview(){
   var t = TEMPLATES.find(function(x){ return x.id === state.tpl; });
   var pv = $('#pv'), warns = $('#warns');
+  if(!pv || !warns) return;
   warns.innerHTML = '';
   if(!t){
     pv.innerHTML = '<p class="empty">Pick a template above to compose a message.</p>';
@@ -1468,14 +1509,6 @@ function initFullApp(){
   $('#resetBtn').onclick = function(){ state.edited = false; renderPreview(); };
   $('#copyRich').onclick = function(){ var p = previewToPayload(); copyRich(p.html, p.text, $('#copyRich')); };
   $('#copyPlain').onclick = function(){ var p = previewToPayload(); copyPlain(p.text, $('#copyPlain')); };
-  $('#mailto').onclick = function(){
-    var p = previewToPayload();
-    var to = state.parsed.email || '';
-    var url = 'mailto:' + encodeURIComponent(to) + '?body=' + encodeURIComponent(p.text);
-    if(url.length > 1900) addWarn('This message is long for a mailto: link — some mail clients may truncate it. \u201cCopy message\u201d is more reliable.');
-    try{ if(_t && _t.navigate){ _t.navigate({url:url}); } else { window.open(url, '_blank') || (location.href = url); } }
-    catch(e){ location.href = url; }
-  };
   initSettings();
   buildTemplates(); buildFields(); renderPreview();
 }
@@ -1489,8 +1522,8 @@ function initStandalone(){
 var TRELLO_ICON = 'data:image/svg+xml,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>');
 
-function buildDataParam(name, desc, ovr, links, member, signoff){
-  try{ return encodeURIComponent(JSON.stringify({ n:name||'', d:desc||'', o:ovr||{}, l:links||{}, m:member||'', so:signoff||'' })); }
+function buildDataParam(name, desc, ovr, links, member){
+  try{ return encodeURIComponent(JSON.stringify({ n:name||'', d:desc||'', o:ovr||{}, l:links||{}, m:member||'' })); }
   catch(e){ return ''; }
 }
 var _lastCardT = null;
@@ -1512,15 +1545,13 @@ function initConnector(){
         t.card('name','desc').catch(function(){ return {name:'',desc:''}; }),
         t.get('board','shared','msgTpl').catch(function(){ return {}; }),
         t.get('board','shared','msgLinks').catch(function(){ return {}; }),
-        t.member('fullName').catch(function(){ return {}; }),
-        t.get('board','private','signoff').catch(function(){ return ''; })
+        t.member('fullName').catch(function(){ return {}; })
       ]);
-      var timeout = new Promise(function(res){ setTimeout(function(){ res([{name:'',desc:''},{},{},{},'' ]); }, 1800); });
+      var timeout = new Promise(function(res){ setTimeout(function(){ res([{name:'',desc:''},{},{},{}]); }, 1800); });
       return Promise.race([reads, timeout]).then(function(r){
         var card = r[0] || {}, ovr = r[1] || {}, links = r[2] || {};
         var first = ((r[3] && r[3].fullName) || '').split(/\s+/)[0] || '';
-        var soPref = (r[4] === 'personal' || r[4] === 'team') ? r[4] : '';
-        var dstr = buildDataParam(card.name, card.desc, ovr, links, first, soPref);
+        var dstr = buildDataParam(card.name, card.desc, ovr, links, first);
         // No cache-buster: identical data -> identical URL -> Trello keeps the
         // iframe alive instead of reloading it on every section re-render.
         var sUrl = SELF + '?view=summary&d=' + dstr;
@@ -1562,24 +1593,35 @@ function initSummary(){
     el.classList.add(ok === false ? 'err' : 'ok');
     setTimeout(function(){ el.classList.remove('ok'); el.classList.remove('err'); }, 1200);
   }
-  function quickCopyPickup(lockerN, btn){
-    /* Entire-project 'Ready for pickup' via the real template pipeline,
-       so board wording overrides apply here too. */
+  function copyTemplate(tplId, vals, btn){
+    /* Quick copy via the real template pipeline, so board wording
+       overrides apply here too. */
     state.site = site;
-    state.vals = { scope: svScope, handoff:'box' };
-    if(site === 'as') state.vals.locker = String(lockerN);
-    var tplId = (site === 'as') ? 'pickup_as' : (site === 'davis' ? 'pickup_davis' : 'ask_location');
+    state.vals = vals;
     var tpl = TEMPLATES.find(function(x){ return x.id === tplId; });
+    if(!tpl) return;
     var blocks = textToBlocks(expandText(tpl));
     var html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45">' +
                blocksToHtml(blocks).replace(/<span class="miss">([^<]*)<\/span>/g, '$1') + '</div>';
     var text = blocksToText(blocks);
-    copyRich(html, text, null);
+    copyRich(html, text, btn && btn.classList.contains('btn') ? btn : null);
     flash(btn);
+  }
+  function quickCopyPickup(lockerN, btn, tplIdOverride){
+    var vals = { scope: svScope, handoff:'box' };
+    if(site === 'as' && lockerN) vals.locker = String(lockerN);
+    var tplId = tplIdOverride ||
+      ((site === 'as') ? 'pickup_as' : (site === 'davis' ? 'pickup_davis' : 'ask_location'));
+    copyTemplate(tplId, vals, btn);
   }
   function renderPickRow(){
     var host = $('#svPick'); host.innerHTML = '';
     if(site === 'as'){
+      var rb = document.createElement('button'); rb.type = 'button'; rb.className = 'lk ronc';
+      rb.title = 'Copy RadOnc collection point notice (locker 1)';
+      rb.innerHTML = '<span class="n">RadOnc</span><span class="c num">' + CONFIG.LOCKER_CODES[1] + '</span>';
+      rb.onclick = function(){ quickCopyPickup(null, rb, 'pickup_radonc'); };
+      host.appendChild(rb);
       for(var i = 2; i <= 8; i++)(function(n){
         var b = document.createElement('button'); b.type = 'button'; b.className = 'lk';
         b.title = 'Copy pickup notice for locker ' + n;
@@ -1601,12 +1643,52 @@ function initSummary(){
     }
     resize();
   }
+  function defaultPickId(){
+    return (site === 'as') ? 'pickup_as' : (site === 'davis' ? 'pickup_davis' : 'ask_location');
+  }
+  function buildSvTplOptions(){
+    var sel = $('#svTpl'); sel.innerHTML = '';
+    var groups = [];
+    TEMPLATES.forEach(function(t){ if(groups.indexOf(t.group) === -1) groups.push(t.group); });
+    groups.forEach(function(g){
+      var list = TEMPLATES.filter(function(t){
+        return t.group === g && (t.site === 'any' || t.site === site) && (!t.tier || t.tier === state.tier);
+      });
+      if(!list.length) return;
+      var og = document.createElement('optgroup'); og.label = g;
+      list.forEach(function(t){
+        var o = document.createElement('option'); o.value = t.id; o.textContent = effectiveTitle(t);
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+  }
+  function selectSvTpl(id){
+    var t = TEMPLATES.find(function(x){ return x.id === id; });
+    if(!t){ id = defaultPickId(); t = TEMPLATES.find(function(x){ return x.id === id; }); }
+    state.tpl = id;
+    $('#svTpl').value = id;
+    state.vals = {};
+    if(t) t.fields.forEach(function(f){ if(f.def) state.vals[f.k] = f.def; });
+    var isPickup = (id === defaultPickId());
+    // pickup default: tiles + scope rows; anything else: compact fields + copy
+    $('#svFieldsRow').hidden = isPickup;
+    var rows = document.querySelectorAll('#summaryView .svrow');
+    rows.forEach(function(r){
+      var lbl = r.querySelector('.plbl') ? r.querySelector('.plbl').textContent : '';
+      if(lbl === 'Scope' || lbl === 'Pickup') r.style.display = isPickup ? '' : 'none';
+    });
+    if(isPickup){ state.vals.scope = svScope; state.vals.handoff = 'box'; renderPickRow(); }
+    else buildFields('#svFields');
+    resize();
+  }
   function setSvSite(x){
     site = x;
     $('#svDavis').setAttribute('aria-pressed', x === 'davis' ? 'true' : 'false');
     $('#svAS').setAttribute('aria-pressed', x === 'as' ? 'true' : 'false');
     $('#svUnk').setAttribute('aria-pressed', x === 'unknown' ? 'true' : 'false');
-    renderPickRow();
+    buildSvTplOptions();
+    selectSvTpl(defaultPickId());
   }
   function setSvSignoff(mode){
     state.signoff = mode;
@@ -1621,9 +1703,14 @@ function initSummary(){
   $('#svSoT').onclick = function(){ setSvSignoff('team'); };
   function setSvScope(x){
     svScope = x;
+    state.vals.scope = x;
     $('#svScE').setAttribute('aria-pressed', x === 'complete' ? 'true' : 'false');
     $('#svScP').setAttribute('aria-pressed', x === 'partial' ? 'true' : 'false');
   }
+  $('#svTpl').onchange = function(){ selectSvTpl(this.value); };
+  $('#svCopyMsg').onclick = function(){
+    copyTemplate(state.tpl, state.vals, $('#svCopyMsg'));
+  };
   $('#svScE').onclick = function(){ setSvScope('complete'); };
   $('#svScP').onclick = function(){ setSvScope('partial'); };
 
@@ -1669,12 +1756,18 @@ function initSummary(){
     setSvSite(p.site || 'unknown');
     resize();
   }
+  // Sign-off preference is fetched directly (never via the URL), so toggling
+  // it doesn't change the iframe URL and can't trigger a reload/reset.
+  try{
+    t.get('board','private','signoff').then(function(v){
+      if(v === 'personal' || v === 'team') setSvSignoff(v);
+    }, function(){});
+  }catch(e){}
   var dp = readDataParam();                    // primary: URL-routed data
   if(dp){
     if(dp.o && typeof dp.o === 'object') OVR = dp.o;
     if(dp.l && typeof dp.l === 'object') LINKS_STORE = dp.l;
     if(dp.m) state.memberFirst = dp.m;
-    if(dp.so === 'personal' || dp.so === 'team') setSvSignoff(dp.so);
     fill(dp.n, dp.d);
   }
   else {                                       // fallback: iframe channel
@@ -1699,12 +1792,18 @@ function initEditor(){
   try{ _t = window.TrelloPowerUp.iframe(); }catch(e){ _t = null; }
   if(_t){ applyTheme(_t); [200,800,2000].forEach(function(ms){ setTimeout(function(){ applyTheme(_t); }, ms); }); }
   initFullApp();
+  if(_t){
+    try{
+      _t.get('board','private','signoff').then(function(v){
+        if(v === 'personal' || v === 'team') setSignoff(v);
+      }, function(){});
+    }catch(e){}
+  }
   var dp = readDataParam();                    // primary: URL-routed data
   if(dp){
     if(dp.o && typeof dp.o === 'object') OVR = dp.o;
     if(dp.l && typeof dp.l === 'object') LINKS_STORE = dp.l;
     if(dp.m) state.memberFirst = dp.m;
-    if(dp.so === 'personal' || dp.so === 'team') setSignoff(dp.so);
     hydrate(dp.n, dp.d);
   }
   else if(_t){                                 // fallback: iframe channel
@@ -1712,13 +1811,11 @@ function initEditor(){
       _t.card('name','desc').catch(function(){ return {name:'',desc:''}; }),
       _t.get('board','shared','msgTpl').catch(function(){ return {}; }),
       _t.get('board','shared','msgLinks').catch(function(){ return {}; }),
-      _t.member('fullName').catch(function(){ return {}; }),
-      _t.get('board','private','signoff').catch(function(){ return ''; })
+      _t.member('fullName').catch(function(){ return {}; })
     ]).then(function(r){
       if(r[1] && typeof r[1] === 'object') OVR = r[1];
       if(r[2] && typeof r[2] === 'object') LINKS_STORE = r[2];
       state.memberFirst = ((r[3] && r[3].fullName) || '').split(/\s+/)[0] || '';
-      if(r[4] === 'personal' || r[4] === 'team') setSignoff(r[4]);
       hydrate(r[0].name, r[0].desc);
     }, function(){ hydrate('',''); });
   } else hydrate('','');
