@@ -340,7 +340,7 @@ try{
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.23';
+var VERSION = '1.24';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -1745,6 +1745,10 @@ function initSummary(){
     $('#svEmpty').hidden = hasData;
     if(!hasData){ resize(); return; }
     var row = $('#svCopyRow'); row.innerHTML = '';
+    // project tag = the card title
+    if(state.cardName){
+      row.appendChild(copyBtn('Project tag', state.cardName, state.cardName));
+    }
     // purchasing snippet
     if(p.snippet || p.acct){
       var sv = currentSnippet();
