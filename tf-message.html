@@ -340,7 +340,7 @@ try{
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.24';
+var VERSION = '1.25';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -480,6 +480,7 @@ var TOKEN_HELP = {
   amountClause:'\u201c totaling $\u2026\u201d or blank', validClause:'estimate validity sentence or blank',
   inpersonReason:'why we\u2019re handing off in person \u2014 follows the Reason dropdown',
   siteFacility:'the selected facility with room + address (follows the location slider)',
+  projLine:'projected-completion sentence, built from the optional date and time fields',
   suppliesEta:'supply-arrival sentence \u2014 follows the Expected arrival field / TBD checkbox',
   billingLine:'billing sentence \u2014 follows the Internal/External slider',
   startLine:'how-to-start sentence with the right intake link \u2014 follows the Internal/External slider',
@@ -507,8 +508,8 @@ function baseTokens(v, c){
       (state.signoff === 'personal'
         ? ((state.memberFirst ? (state.memberFirst + '\n') : '') + F.orgName)
         : ('The ' + F.orgName + ' Team')),
-    ready: partial ? 'Good news: part of your project is ready for pickup'
-                   : 'Good news: your project is complete and ready for pickup',
+    ready: partial ? 'Part of your project is ready for pickup'
+                   : 'Your project is complete and ready for pickup',
     partialNote: partial ? 'The remainder is still in progress, and we\u2019ll send another notice as soon as it\u2019s complete.' : '',
     locker: v.locker || '{{miss:locker #}}',
     code: CONFIG.LOCKER_CODES[v.locker] || '{{miss:code}}',
@@ -572,7 +573,7 @@ var TEMPLATES = [
 '{ready}. We have placed it in our secure pickup box at the rear of GBSF ({davisAddress}), in the loading-dock area on the west side of the building. The box is outside, so it is accessible 24 hours a day. {partialNote}\n\n' +
 'To open the box:\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. The box will open. Please take only your items and close the lid.\n\n' +
 'If the box does not accept your input on the first try, simply enter the code again ({teamCode}#).\n\n' +
-'Photos and a map of the box location: {{link:davisPickupGuide|Davis pickup guide}}\n\n' +
+'{{link:davisPickupGuide|Davis project pick-up instructions}}\n\n' +
 '{signoff}',
       inperson: '{greeting}\n\n{ready}. {inpersonReason} {partialNote}\n\n' +
 'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{signoff}',
@@ -603,7 +604,7 @@ var TEMPLATES = [
 '{greeting}\n\n' +
 'You can drop your item off any time using our secure box at the rear of GBSF ({davisAddress}), in the loading-dock area on the west side of the building. The box is outside, so it is accessible 24 hours a day.\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. Place your item inside and close the lid.\n\n' +
 'Please reply to this email once you\u2019ve dropped off so we know to collect it. During business hours you\u2019re also welcome to bring items directly to Room 1703; call us at {davisPhone} from the south entry doors and we\u2019ll meet you.\n\n' +
-'Photos and a map of the box location: {{link:davisPickupGuide|Davis box guide}}\n\n' +
+'{{link:davisPickupGuide|Davis project drop-off instructions}}\n\n' +
 '{signoff}' },
   { id:'ask_location', group:'Pick-up/Drop-off', site:'unknown', title:'Ask collection preference',
     fields:[],
@@ -716,6 +717,20 @@ var TEMPLATES = [
     text:
 '{greeting}\n\nYour project{projectRef} is currently on hold. We need one thing from you before we can continue:\n\n{reasonLine}\n\n' +
 'Reply to this email and we\u2019ll pick the job right back up. Nothing is lost; it\u2019s simply paused in our queue.\n\n{signoff}' },
+  { id:'production', quick:true, group:'Job status', site:'any', title:'In production',
+    fields:[{k:'pdate',label:'Projected date (optional)',type:'text',ph:'e.g. Friday 10/2'},
+            {k:'ptime',label:'Projected time (optional)',type:'text',ph:'e.g. 3:00 PM'}],
+    tokens:function(v){
+      var dt = (v.pdate || '').trim(), tm = (v.ptime || '').trim();
+      return { projLine:
+        (dt && tm) ? ('We currently project it will be complete on ' + dt + ' around ' + tm + '.') :
+        dt ? ('We currently project it will be complete on ' + dt + '.') :
+        tm ? ('We currently project it will be complete around ' + tm + '.') :
+        'We\u2019ll let you know as soon as it\u2019s ready.' };
+    },
+    text:
+'{greeting}\n\nA quick status update: your project{projectRef} has entered production. {projLine}\n\n' +
+'No action is needed on your end. We\u2019ll follow up with pickup details once it\u2019s finished.\n\n{signoff}' },
   { id:'supplies', quick:true, group:'Job status', site:'any', title:'Supplies on order',
     fields:[{k:'eta',label:'Expected arrival',type:'text',ph:'e.g. week of 7/14'},
             {k:'tbd',label:'Arrival TBD',type:'check',disables:'eta'}],
