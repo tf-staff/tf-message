@@ -14,6 +14,7 @@ Client-communication Power-Up for the UC Davis Tech Foundry (Davis/GBSF + Aggie 
 6. **Messages are data, not code.** Every template body is plain text with `{tokens}`; staff edit bodies, button names, and hyperlinks board-wide from the ✎ Edit panel without touching the file. Keep new templates in this form.
 7. **Verify with a headless harness before shipping.** See "Verification" below. Steven prefers simulation-first iteration; every change in the build history shipped with a passing jsdom regression run.
 8. **Work only on the current file.** Never regenerate from an older version. If a session's container resets, the last shipped build lives on `main` here.
+9. **Merge to `main` immediately after development and testing pass.** Develop on the session branch, push it, then fast-forward/merge into `main` and push `main` so GitHub Pages deploys. No PR step.
 
 ## Architecture: the four-mode chassis
 
