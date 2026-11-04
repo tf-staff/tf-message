@@ -340,7 +340,7 @@ try{
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.25';
+var VERSION = '1.26';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -461,6 +461,8 @@ var TOKEN_HELP = {
   signoff:'closing lines \u2014 follows the Personal/Team sign-off slider',
   ready:'pickup opener \u2014 adapts to the Entire/Partial switch',
   partialNote:'extra sentence shown only for partial deliveries',
+  completionNote:'pickup closing paragraph \u2014 outcome/feedback/photos note on Entire, just the questions line on Partial',
+  closing:'\u201cBest regards\u201d + name lines only (no questions line) \u2014 follows the sign-off slider',
   locker:'selected locker number', code:'that locker\u2019s keypad code',
   radoncCode:'RadOnc locker code', teamCode:'Davis TEAM box code',
   asAddress:'Aggie Square address', asHours:'Aggie Square hours', asGarage:'Aggie Square garage info',
@@ -502,12 +504,16 @@ function platformLine(platform, c){
 }
 function baseTokens(v, c){
   var partial = (v.scope === 'partial');
+  var closing = 'Best regards,\n' +
+    (state.signoff === 'personal'
+      ? ((state.memberFirst ? (state.memberFirst + '\n') : '') + F.orgName)
+      : ('The ' + F.orgName + ' Team'));
   return {
     greeting: c.firstName ? ('Hi ' + c.firstName + ',') : 'Hello,',
-    signoff: 'Please let us know if you have any questions.\n\nBest regards,\n' +
-      (state.signoff === 'personal'
-        ? ((state.memberFirst ? (state.memberFirst + '\n') : '') + F.orgName)
-        : ('The ' + F.orgName + ' Team')),
+    signoff: 'Please let us know if you have any questions.\n\n' + closing,
+    closing: closing,
+    completionNote: partial ? 'Please let us know if you have any questions.'
+      : 'Successful outcomes are very important to us. Please let us know if you have any questions, or if we didn\u2019t meet your needs, so we can make it right. We also enjoy seeing our work in action; feel free to send us photos of your project. Your feedback helps us keep improving.',
     ready: partial ? 'Part of your project is ready for pickup'
                    : 'Your project is complete and ready for pickup',
     partialNote: partial ? 'The remainder is still in progress, and we\u2019ll send another notice as soon as it\u2019s complete.' : '',
@@ -549,11 +555,11 @@ var TEMPLATES = [
 '{ready}. We have placed it in locker {locker} inside the Aggie Square Building at {asAddress}. The lockers are directly across from our facility (Room 1730), and the building is accessible {asHours}. {partialNote}\n\n' +
 'To open the locker:\n1. Press C to wake the keypad.\n2. Enter the access code: {code}\n3. Press the key button. The locker will unlock.\n\n' +
 'Photo directions from the front entrance to the lockers: {{link:asPickupGuide|Aggie Square pickup guide}}\n\n' +
-'{signoff}',
+'{completionNote}\n\n{closing}',
       inperson: '{greeting}\n\n{ready}. {inpersonReason} {partialNote}\n\n' +
-'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{signoff}',
+'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{completionNote}\n\n{closing}',
       delivery: '{greeting}\n\n{ready}. To wrap it up, we\u2019d like to schedule a delivery, and we can handle installation on-site if needed. {partialNote}\n\n' +
-'Could you reply with a few dates and times that work, along with the delivery address (building and room)? We\u2019ll get it on the calendar.\n\n{signoff}'
+'Could you reply with a few dates and times that work, along with the delivery address (building and room)? We\u2019ll get it on the calendar.\n\n{completionNote}\n\n{closing}'
     } },
   { id:'pickup_davis', group:'Pick-up/Drop-off', site:'davis', title:'Ready for pickup',
     fields:[SCOPE_FIELD, {k:'handoff',label:'Handoff',type:'seg',def:'box',
@@ -574,11 +580,11 @@ var TEMPLATES = [
 'To open the box:\n1. Press # to wake the keypad.\n2. Enter the access code {teamCode}, then press #.\n3. The box will open. Please take only your items and close the lid.\n\n' +
 'If the box does not accept your input on the first try, simply enter the code again ({teamCode}#).\n\n' +
 '{{link:davisPickupGuide|Davis project pick-up instructions}}\n\n' +
-'{signoff}',
+'{completionNote}\n\n{closing}',
       inperson: '{greeting}\n\n{ready}. {inpersonReason} {partialNote}\n\n' +
-'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{signoff}',
+'Could you reply with a few dates and times that work for you? We\u2019ll confirm a pickup window at our {siteFacility}.\n\n{completionNote}\n\n{closing}',
       delivery: '{greeting}\n\n{ready}. To wrap it up, we\u2019d like to schedule a delivery, and we can handle installation on-site if needed. {partialNote}\n\n' +
-'Could you reply with a few dates and times that work, along with the delivery address (building and room)? We\u2019ll get it on the calendar.\n\n{signoff}'
+'Could you reply with a few dates and times that work, along with the delivery address (building and room)? We\u2019ll get it on the calendar.\n\n{completionNote}\n\n{closing}'
     } },
   { id:'pickup_radonc', group:'Pick-up/Drop-off', site:'as', title:'RadOnc collection point',
     fields:[SCOPE_FIELD],
@@ -587,7 +593,7 @@ var TEMPLATES = [
 '{ready}. It\u2019s waiting at the Radiation Oncology Collection Point, the top-left green locker across from our facility (Room 1730) in the Aggie Square Building, {asAddress}. The building is accessible {asHours}. {partialNote}\n\n' +
 'To open the locker:\n1. Press C to wake the keypad.\n2. Enter the access code: {radoncCode}\n3. Press the key button. The locker will unlock.\n\n' +
 'Photo directions: {{link:asPickupGuide|Aggie Square pickup guide}}\n\n' +
-'{signoff}' },
+'{completionNote}\n\n{closing}' },
   /* -------- Drop-off -------- */
   { id:'dropoff_as', quick:true, group:'Pick-up/Drop-off', site:'as', title:'Drop-off instructions',
     fields:[],
