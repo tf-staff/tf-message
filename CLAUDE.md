@@ -145,6 +145,7 @@ Three real Zapier descriptions (Hoehne/Davis/internal, Pivetti/no-pref/internal,
 
 ## Open items / backlog
 
+- **Next deploy (queued by Steven):** `CONFIG.FACTS.davisAddress` is `451 Health Sciences Drive, Room 1703 (GBSF), Davis, CA 95616`, which renders as brackets-in-brackets in the Davis pickup box text ("rear of GBSF (… Room 1703 (GBSF) …)"). Fix: drop the brackets around GBSF in the address, i.e. `451 Health Sciences Drive, Room 1703 GBSF, Davis, CA 95616`. Related: `dir_both` and `ask_location` lines (`- Davis: Room 1703 (GBSF), {davisAddress}`) repeat the room number already in the address; check while there.
 - Commit the jsdom harness and parser fixtures to the repo (`test/`), so verification is one `node test/run.js`.
 - `CONFIG.FACTS.asHours` has a comment flagging that the three source PDFs disagree on Aggie Square opening time (6:00/6:30/7:00). Steven has since set it to "7:00 AM–6:00 PM, weekdays and Saturday"; confirm against the published Box PDFs and remove the comment.
 - Cross-Power-Up quote insertion: TF-Recharge could write its quote text into card pluginData for TF-Message to pick up without the clipboard hop (needs a shared key convention; Power-Ups can't read each other's pluginData directly).
