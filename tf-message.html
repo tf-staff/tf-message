@@ -340,7 +340,7 @@ try{
    same approach that fixed the recharge simulator's iframe channel in v1.1 —
    with t.card() as a fallback inside the iframes.
    ===================================================================== */
-var VERSION = '1.26';
+var VERSION = '1.26.1';
 var SELF = location.origin + location.pathname;
 
 /* =========================== CONFIG ==================================
@@ -949,7 +949,7 @@ function previewToPayload(){
   var pv = $('#pv');
   var clone = pv.cloneNode(true);
   clone.querySelectorAll('.miss').forEach(function(n){ n.replaceWith(document.createTextNode(n.textContent)); });
-  var html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45">' + clone.innerHTML + '</div>';
+  var html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;color:#000000">' + clone.innerHTML + '</div>';
   var text = '';
   clone.childNodes.forEach(function(n){
     if(n.nodeType !== 1) { text += n.textContent; return; }
@@ -1002,6 +1002,9 @@ function copyRichFallback(html, text, done){
     var el = document.createElement('div');
     el.setAttribute('contenteditable','true');
     el.style.position = 'fixed'; el.style.left = '-9999px'; el.style.top = '0'; el.style.opacity = '0';
+    /* Chrome copies the computed text color; without this the dark-theme gray
+       rides along and shows up as light-gray text in Gmail. */
+    el.style.color = '#000000'; el.style.background = 'transparent';
     el.innerHTML = html;
     document.body.appendChild(el);
     var range = document.createRange(); range.selectNodeContents(el);
@@ -1617,7 +1620,7 @@ function initSummary(){
     var tpl = TEMPLATES.find(function(x){ return x.id === tplId; });
     if(!tpl) return;
     var blocks = textToBlocks(expandText(tpl));
-    var html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45">' +
+    var html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;color:#000000">' +
                blocksToHtml(blocks).replace(/<span class="miss">([^<]*)<\/span>/g, '$1') + '</div>';
     var text = blocksToText(blocks);
     copyRich(html, text, btn && btn.classList.contains('btn') ? btn : null);
