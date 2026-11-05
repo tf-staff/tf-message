@@ -15,6 +15,7 @@ Client-communication Power-Up for the UC Davis Tech Foundry (Davis/GBSF + Aggie 
 7. **Verify with a headless harness before shipping.** See "Verification" below. Steven prefers simulation-first iteration; every change in the build history shipped with a passing jsdom regression run.
 8. **Work only on the current file.** Never regenerate from an older version. If a session's container resets, the last shipped build lives on `main` here.
 9. **Merge to `main` immediately after development and testing pass.** Develop on the session branch, push it, then fast-forward/merge into `main` and push `main` so GitHub Pages deploys. No PR step.
+10. **Print staff-facing release notes after every build.** Once a build is merged to `main`, print short, plain-language release notes in chat for Steven to forward to staff: version number, what changed from a user's point of view, and any action staff need to take (wait for the new version in the card-back title, Revert to default on edited wording, re-copy, etc.). No code or file names.
 
 ## Architecture: the four-mode chassis
 
